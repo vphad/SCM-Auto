@@ -1,0 +1,39 @@
+import jenkins.*
+import jenkins.model.*
+import hudson.*
+import hudson.model.*
+
+import hudson.scm.*
+import hudson.tasks.*
+import com.cloudbees.hudson.plugins.folder.*
+
+jen = Jenkins.instance
+
+jen.getItems().each{
+	if(it instanceof Folder || it instanceof jenkins.branch.OrganizationFolder){
+		processFolder(it)
+	}else{
+		processJob(it)
+	}
+}
+
+void processJob(Item job){
+	// job.getLastBuild()
+}
+
+void processFolder(Item folder){
+
+	if(folder.getItems().size()==0){
+		println "${folder.getFullName()},${folder.getAbsoluteUrl()}"
+	}
+	
+	folder.getItems().each{
+		if(it instanceof Folder  || it instanceof jenkins.branch.OrganizationFolder){
+			processFolder(it)
+		}else{
+			processJob(it)
+		}
+	}
+}
+
+println ""

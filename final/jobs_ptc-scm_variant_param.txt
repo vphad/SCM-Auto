@@ -1,0 +1,18 @@
+import hudson.scm.IntegritySCM
+
+def jen = Jenkins.instance
+
+scmJobs = jen.getAllItems().findAll{
+  (it.hasProperty('scm') && null!=it.getScm()) && (it.getScm() instanceof hudson.scm.IntegritySCM) 
+}
+
+
+scmJobs.each{
+  configPath = it.getScm().getConfigPath()
+
+	if(configPath.contains("IssuerCRM")){
+      println "${it.getAbsoluteUrl()},${it.getFullName()}"
+	}	
+}
+
+println ""

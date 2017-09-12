@@ -1,0 +1,33 @@
+/*
+	Script lists all the jobs which are built in the given time.
+	Output is provided in csv format.
+*/
+
+def jen = Jenkins.instance
+
+allJobs = jen.getAllItems().findAll{ job ->
+	(job instanceof Job) && !job.isDisabled()
+}
+
+def timeStart = Date.parse("yyyy-MM-dd hh:mm:ss", "2016-01-04 08:00:00")
+def timeEnd = Date.parse("yyyy-MM-dd hh:mm:ss", "2016-01-04 11:00:00")
+
+println "JobName,Url,Built On"
+
+lastBuilds = allJobs.each{ job ->
+
+	buildsTemp = job.getBuilds().byTimestamp(timeStart.getTime(), timeEnd.getTime())
+
+	if(buildsTemp.size()>0){   
+      def builtOnServer = buildsTemp.get(0).builtOn
+      def builtOn = ""
+      if(builtOnServer instanceof Slave){
+        builtOn = builtOnServer.name
+      }else{
+        builtOn = builtOnServer.getDisplayName()
+      }
+      println job.getFullName() + "," + job.getAbsoluteUrl() + "${buildsTemp.get(0).getNumber()}/console" + "," +  builtOn
+	}
+}
+
+println "End"

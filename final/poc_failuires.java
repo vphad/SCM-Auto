@@ -1,0 +1,269 @@
+import jenkins.*
+import jenkins.model.*
+import hudson.*
+import hudson.model.*
+
+
+def jen = Jenkins.instance
+
+allJobs = jen.getAllItems().findAll{
+	job ->
+	(job instanceof Job) && !job.isDisabled() && (job.getFullName().toLowerCase().contains('sonar upgrade')) && (job.getConfigFile().asString().toLowerCase().contains("sonar"))
+}
+
+today = new Date()
+today.clearTime()
+
+yestarday = today - 1
+
+def output = ""
+
+def totalcnt = 0
+def sonarcnt = 0
+def allprojectcnt = 0
+def scnt = 0
+def fcnt = 0
+def othercnt = 0
+
+long secondInMillis = 1000;
+long minuteInMillis = secondInMillis * 60;
+long hourInMillis = minuteInMillis * 60;
+long dayInMillis = hourInMillis * 24;
+
+long duration = minuteInMillis
+
+for(Job job : allJobs) {
+	build = job.getLastBuild();
+
+	if(build!=null) {
+
+		totalcnt ++
+
+		if(Result.FAILURE==build.result){
+			fcnt++
+		}else if (Result.SUCCESS==build.result){
+			scnt++
+		}else{
+			othercnt++
+		}
+
+		def builtOnServer = build.builtOn
+		def builtOn = ""
+
+		if(builtOnServer instanceof Slave){
+			builtOn = builtOnServer.name
+		}else{
+			builtOn = builtOnServer.getDisplayName()
+		}
+
+		// action = build.getAction(jenkins.metrics.impl.TimeInQueueAction.class)
+
+		def totalDuration = ""
+		def totalQDuration = ""
+		def totalBuildDuration = ""
+		def totalJobDuration = ""
+
+		// if (action != null) {
+			// totalDuration = String.format( "%02.02f", (action.getTotalDurationMillis() / duration))
+			// totalQDuration = String.format( "%02.02f", (action.getQueuingDurationMillis() / duration))
+			// totalBuildDuration = String.format( "%02.02f", (action.getBuildingDurationMillis() / duration))
+			// //totalJobDuration  = totalDuration + totalQDuration
+		// }
+
+		lastSuccessfullBuildTime = (job.getLastSuccessfulBuild()!=null) ? job.getLastSuccessfulBuild().getTime().format("MM-dd-yyyy HH:mm:ss") : ""
+		lastBuildTime = (build.getTime() !=null ? build.getTime().format("MM-dd-yyyy HH:mm:ss") : "")
+		lastBuildResult = build.result
+		lastBuild = build
+
+		displayName = job.getFullName()
+		jobUrl = job.getAbsoluteUrl()
+		comment = ""
+		category= ""
+		consoleLog = ""
+
+		if(lastBuild.result == Result.FAILURE){
+
+			// ignore log analysis for AHS
+			if(!displayName.contains("AHS")){
+				logFile = lastBuild.getLogFile()
+
+				category = ""
+				comment = ""
+
+				logFile.withReader { reader ->
+
+					while ((logText = reader.readLine()) !=null ) {
+
+						childFailureMatcher = logText =~ /\s+completed\s+:\s+FAILURE/
+						sonarFailRegEx = logText =~ /(?m)\[ERROR\] Failed to execute goal\s+.*\s+.*\s+on project\s+(.*?)$/
+						metadataFileRegEx = logText =~ /error CS0006: Metadata file \'.*\'\s+could not be found/
+						pluginFailed = logText =~ /(?m)\[ERROR\] Failed to execute goal\s+.*\s+.*\s+on project\s+(.*?)$/
+						isdevRegex = logText=~ /ISDEV\s+:\s+error\s+:.*/
+						apiConRegEx = logText =~ /Failed to establish an API connection to the Integrity Server!/
+						testFailureRegEx = logText =~ /\[ERROR\] Failed to execute goal.*There are test failures/
+						nugetRegEx = logText =~ /System.InvalidOperationException: Unable to find version '.*' of package '.*'./
+
+						winCompilationRegEx = logText =~ /\s+\d+\s+Error\(s\)/
+						winFailRegEx = logText =~ /=+\s+Rebuild All: \d+ succeeded, (\d+)? failed, \d+ skipped ==========/
+
+						if(logText.contains("The project is already being analysed")){
+							category="The project is already being analysed"
+						} else if(logText.contains("Failed to execute goal org.apache.felix:maven-bundle-plugin") && logText.contains("Unsupported major.minor version")){
+							category="Felix maven-bundle-plugin"
+						} else if(logText.contains("Failed to execute goal org.codehaus.mojo:sonar-maven-plugin") && logText.contains("Unsupported major.minor version")){
+							category="Sonar"
+							comment="Sonar Unsupported major.minor"
+
+						}else if (logText.contains("[ERROR] Package deploy failed.")){
+							category = "NuGet-mdppkg"
+							comment = "Package deploy failed"	
+						}			
+						 else if(logText.contains("Unsupported major.minor version")){
+							category="Unsupported Version"
+						} else if(logText.contains("Could not resolve dependencies")){
+							category="Dependency Error"
+						} else if(logText.contains("access to Sonar or project doesn't exist on Sonar instance")){
+							category="Sonar"
+							comment = "Can´t access to Sonar"
+						} else if(logText.contains("No buffer space available")){
+							category="Sonar"
+							comment = "No buffer space available"
+						} else if(logText.contains("Failed to execute goal org.codehaus.mojo:sonar-maven-plugin")){
+							category="Sonar"
+
+							if(logText.contains("Response code: 500")){
+								comment = "Response code: 500"
+							} else if(logText.contains("Cause: java.sql.SQLException")){
+								comment = "Cause: java.sql.SQLException"
+							} else if(logText.contains("Expected one result (or null) to be returned by selectOne()")){
+								comment = "Duplicate entry; Expected one result"
+							} else if(sonarFailRegEx.getCount() > 0){
+								comment = sonarFailRegEx.getAt(0)[1]
+							} else{
+								comment = ""
+							}
+						}
+						else if(logText.contains("[ERROR] protoc failed error")){
+							category="protoc failed"
+						} else if(logText.contains("java.io.IOException: remote file operation failed") && logText.contains("Caused by: java.io.IOException:")){
+							comment = "File operation failed"
+							// category = "Child Failure"
+						} else if(logText.contains("[ERROR] Pack command failed")){
+							comment = "Pack command failed"
+						} else if(logText.contains("[ERROR] COMPILATION ERROR")){
+							category = "Compilation Error"
+						}else if(metadataFileRegEx!=null && metadataFileRegEx.getCount() > 0){
+							comment = metadataFileRegEx.getAt(0)
+						}else if(isdevRegex!=null && isdevRegex.getCount() > 0){
+							category = "ISDEV Error"
+							comment = isdevRegex.getAt(0)
+						}else if(apiConRegEx!=null && apiConRegEx.getCount() > 0){
+							category = "PTC Connection"
+							comment = "Rebuild this: Failed to establish an API connection to the Integrity Server!"
+						}else if(testFailureRegEx!=null && testFailureRegEx.getCount() > 0){
+							category = "Testcase Failed"
+							comment = "Action Item - Developer to look into"
+						}else if(winCompilationRegEx.getCount() > 0)
+						{
+							category = "Compilation Error"
+							comment = ".NET compilation error"
+						}else if(winFailRegEx.getCount() > 0)
+						{
+							if(winFailRegEx.getAt(0).size() >  0){
+								category = "Compilation Error"
+								comment = ".NET compilation error : " + winFailRegEx.getAt(0)[1] + " Failed"
+							}
+						}
+
+						else if(nugetRegEx.getCount()>0){
+							category = "NuGet unable to find package"
+						}
+
+						else if(logText.contains("Cannot locate a solution file")){
+							category = "Cannot locate a solution file"
+						}
+
+						else if(logText.contains("Non-readable POM") && logText.contains("The system cannot find the file specified")){
+							category = "Non-readable POM"
+							comment = "Invalid pom path or PTC integrity checkout issue"
+
+						}
+
+						// This must be last else if
+						else if(category=="" && pluginFailed!=null && pluginFailed.getCount() > 0){
+							comment = pluginFailed.getAt(0)[1]
+						}
+
+						if(logText.contains("Low Disk Space")){
+							category = "Low Disk Space"
+							comment = "Low Disk Space"
+						}
+
+						// Show last 20 lines of logs
+						//						def lines = logFile.readLines()
+						//
+						//						def totalLines = lines.size()
+						//
+						//						if(totalLines > 20 ){
+						//							// get last 10 lines of error message
+						//							lines = lines.drop(totalLines - 20)
+						//						}
+
+						comment = comment.replaceAll(',', '; ')
+
+						consoleLog = "" // lines.join('\n')
+
+						// consoleLog = consoleLog.replaceAll('\\[.*\\[0m',' ').replaceAll(",", " ").replaceAll("\n"," ").replaceAll("\r"," ")
+
+					}
+
+
+				}
+
+			}
+
+
+			if(job.hasProperty("dsl") && job.getDsl()!=null){
+				category = "All Projects"
+			}
+			if(displayName.contains("SCMTeamInternal")){
+				category = "SCM Team"
+			}
+			if(displayName.contains("AHS")){
+				category = "AHS"
+			}
+			if(displayName.contains("CI/")){
+				category = "CI"
+			}
+			if(displayName.contains("MDP/")){
+				category = "MDP"
+			}
+
+			if(category=="Sonar"){
+				sonarcnt++
+			}else if(category == "All Projects"){
+				allprojectcnt++
+			}
+
+			output+= (displayName + "," + build.getAbsoluteUrl()+ "console" + "," + builtOn + "," + lastBuild.result + "," + lastBuildTime + ","+ lastSuccessfullBuildTime + "," + totalQDuration + "," + totalBuildDuration + "," + totalDuration + "," + category + "," + comment + "," + consoleLog +"\n")
+
+		}else{
+			output+= (displayName + "," + build.getAbsoluteUrl()+ "console" + "," + builtOn + "," + lastBuild.result + "," + lastBuildTime + ","+ lastSuccessfullBuildTime + "," + totalQDuration + "," + totalBuildDuration + "," + totalDuration + "," + "," + "," + "\n")
+		}
+	}else{
+		output+= (displayName + "," + job.getAbsoluteUrl() + "\n")
+	}
+}
+
+println "Summary"
+println "Builds between,Yestarday: "+ yestarday.format("MM/dd/yyyy HH:mm") + " & Today: " + today.format("MM/dd/yyyy HH:mm")
+println "Total Jobs," + allJobs.size()
+println "Total Builds triggered," + totalcnt
+println "Total Success,"+ scnt
+println "Total Failed," + fcnt
+println "All Projects Failed,${allprojectcnt}"
+println "Sonar Failed,${sonarcnt}"
+println "Others," + othercnt
+println ""
+println "Job,Build Url,Built On,Status,Build Time,Last Success,Q Duration (Min),Build Duration (Min),Total Build Duration (Min),Category,Comments,Log"
+println output

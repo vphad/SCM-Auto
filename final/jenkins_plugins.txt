@@ -1,0 +1,18 @@
+/*
+This script lists all the plugins with their versions and if it's enabled or not. 
+
+*/
+
+
+def jen = Jenkins.instance
+
+println "Plugin Summary"
+println ""
+def plugins = jen.getPluginManager().getPlugins()
+
+plugins.each {  
+  println "${it.getShortName()},${it.getVersion()}, ${it.isEnabled()}"
+}
+
+println ""
+println "Total number of plugins: ${plugins.size()}"

@@ -1,0 +1,38 @@
+/*
+	Lists all the jobs executed between a given time. 
+	Update
+	timeStart and timeEnd variables
+*/
+
+// Get the jenkins instance
+def jen = Jenkins.instance
+
+
+// get all the jobs recursively and check that job is not disabled
+allJobs = jen.getAllItems().findAll{ job ->
+	(job instanceof Job) && !job.isDisabled()
+}
+
+// start time (use 24 Hr format)
+def timeStart = Date.parse("yyyy-MM-dd hh:mm:ss", "2016-01-05 08:00:00")
+
+// End time 
+def timeEnd = Date.parse("yyyy-MM-dd hh:mm:ss", "2016-01-05 11:00:00")
+
+// For csv column headings
+println "Job Path,Url,Build Time"
+
+
+// Traverse the list
+lastBuilds = allJobs.each{ job ->
+	// Get all the builds by timestamp
+	buildsTemp = job.getBuilds().byTimestamp(timeStart.getTime(), timeEnd.getTime())
+
+	if(buildsTemp.size()>0){
+		// get the last build executed in that time to get time. Though not required.
+		def build = buildsTemp.get(0)
+		println job.getFullName() + "," + job.getAbsoluteUrl() + "," + build.getTime().format("MM-dd-yyyy HH:mm:ss")
+	}
+}
+
+println "End"

@@ -1,0 +1,53 @@
+import jenkins.*
+import jenkins.model.*
+import hudson.*
+import hudson.model.*
+
+import hudson.scm.*
+import hudson.tasks.*
+import com.cloudbees.hudson.plugins.folder.*
+
+jen = Jenkins.instance.getItemByFullName('AHS_IPOC')
+
+today = new Date()
+// today.clearTime()
+
+yestarday = today - 1
+// today = new Date()
+
+long secondInMillis = 1000;
+long minuteInMillis = secondInMillis * 60;
+long hourInMillis = minuteInMillis * 60;
+long dayInMillis = hourInMillis * 24;
+
+long duration = minuteInMillis
+
+
+
+jen.getItems().each{
+	if(it instanceof Folder){
+		processFolder(it)
+	}else{
+		processJob(it)
+	}
+}
+
+void processJob(Item job){
+	builds = job.getBuilds().byTimestamp(yestarday.getTime(), today.getTime())	
+	builds.each{
+      println "${job.getFullName()},${it.getNumber()},${it.getTime().format('MM-dd-yyyy HH:mm:ss')}"
+	}
+	
+}
+
+void processFolder(Item folder){
+	folder.getItems().each{
+		if(it instanceof Folder){
+			processFolder(it)
+		}else{
+			processJob(it)
+		}
+	}
+}
+
+println ""

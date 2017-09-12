@@ -1,0 +1,58 @@
+import jenkins.*
+import jenkins.model.*
+import hudson.*
+import hudson.model.*
+
+
+def jen = Jenkins.instance
+
+def today = new Date()
+def lastMonth = today - 30
+
+long secondInMillis = 1000;
+long minuteInMillis = secondInMillis * 60;
+long hourInMillis = minuteInMillis * 60;
+long dayInMillis = hourInMillis * 24;
+
+long duration = minuteInMillis 
+
+allJobs = jen.getAllItems().findAll{ job ->
+	(job instanceof Job) && !job.isDisabled() && (job.lastSuccessfulBuild!=null) && (job.lastSuccessfulBuild.getTime() > lastMonth)
+}
+
+println "Job,Url,Build Time,Sonar PDF time,Total Build Duration,Actual Build Duration,Q Duration"
+
+for(Job item : allJobs)
+{
+	// item =  jen.getItemByFullName('/MSP-Group/MSP-1.0.7-Paremus')
+
+	def log = item.lastSuccessfulBuild.logFile.text
+	
+	action = item.lastSuccessfulBuild.getAction(jenkins.metrics.impl.TimeInQueueAction.class)
+
+	def totalDuration = ""
+	def totalQDuration = ""
+	def totalBuildDuration = ""
+	def totalJobDuration = ""
+
+	if (action != null) {
+		totalDuration = String.format( "%02.02f", (action.getTotalDurationMillis() / duration))
+		totalQDuration = String.format( "%02.02f", (action.getQueuingDurationMillis() / duration))
+		totalBuildDuration = String.format( "%02.02f", (action.getBuildingDurationMillis() / duration))
+		//totalJobDuration  = totalDuration + totalQDuration
+	}
+
+	def childFailureMatcher = log =~ /\[\d+:\d+:\d+\.\d+\]\s+.*sonarpdf-maven-plugin.*generate done:\s+\d+\s+ms/
+
+	if(childFailureMatcher.count>0)
+	{
+		startLine = childFailureMatcher.getAt(0)
+
+		// println startLine
+		startTime = startLine =~/\d+/
+		
+		pdfreportTime = (Integer.parseInt(startTime.getAt(startTime.size().intValue() - 1)) / (1000 * 60))
+		
+		println "${item.getFullName()},${item.lastSuccessfulBuild.getAbsoluteUrl()},${item.lastSuccessfulBuild.getTime().format("MM-dd-yyyy HH:mm:ss")}," + String.format( "%02.02f", pdfreportTime) + ",${totalDuration},${totalBuildDuration},${totalQDuration}"
+	}
+}

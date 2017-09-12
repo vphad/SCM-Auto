@@ -1,0 +1,9 @@
+"key": "${key}",
+"name": "${name}",
+"projectTypeKey": "software",
+"projectTemplateKey": "com.pyxis.greenhopper.jira:basic-software-development-template",
+"lead": "SYS_OPS_SCM",
+"assigneeType": "PROJECT_LEAD",
+"permissionScheme": 10000,
+"notificationScheme": 10100,
+"categoryId": 10106

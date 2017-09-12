@@ -1,0 +1,225 @@
+// TODO : check SCM path contains Variant from name
+
+import hudson.scm.*
+import hudson.tasks.*
+import com.cloudbees.hudson.plugins.folder.*
+
+def jen = Jenkins.instance
+
+allJobs = jen.getAllItems()
+
+def output = "Url,Job Name,Disabled,Name same as parent,Discard Build,Days To Keep (100),Concurrent Build Check,Email Notification,Email Notification for Failed Builds,Variant Parameter,Variant Parameter Default Value,Label Parameter,Label Parameter Default Value,Environment Parameter,Environment Parameter Default Value,Label Expression (Build On),Schedule,SCM Path with ENV,SCM Clean Copy,SCM Path Variant and Parent Name Variant,Sonar Scan,Sonar Scan with Variant,Maven Deploy,Artifact Upload\n"
+
+for(Item job: allJobs)
+{
+
+	if(job instanceof Folder){
+		output += "${job.getAbsoluteUrl()}, ${job.getName()}\n"
+		continue
+	}
+  
+	// job = jen.getItemByFullName(jobName)
+	
+	if(job==null)
+	{
+		//println "----------------------------"
+		// println "No job found: ${jobName}"
+		continue
+	}
+	
+	def JOB_NAME_STATUS = "FAILED"
+	def PARENT_FOLDER_VARIANT_NAME = "FAILED"
+	def CONCURRENT_BUILD_STATUS = "FAILED"
+	def LOGROTATOR_STATUS="FAILED"
+	def DAYS_TO_KEEP_BUILD_STATUS="FAILED"
+	def VARIANT_PARAM_STATUS="FAILED"
+	def VARIANT_PARAM_DEFAULT_VALUE_STATUS="FAILED"
+	def LABEL_PARAM_STATUS ="FAILED"
+	def LABEL_PARAM_DEFAULT_VALUE_STATUS="FAILED"	
+	def ENVIRONMENT_PARAM_STATUS ="FAILED"
+	def ENVIRONMENT_PARAM_DEFAULT_VALUE_STATUS="FAILED"
+	def ASSIGNED_LABEL_STATUS="FAILED"
+	def SCHEDULE_STATUS="FAILED"
+	//def SCM_PATH_VARIANT_STATUS="FAILED"
+	
+	// TODO: applicable for mdp scm
+	def SCM_PATH_ENV_STATUS="FAILED"
+	def SCM_CLEAN_COPY_STATUS="FAILED"
+	def SONAR_SCAN_STATUS="FAILED"
+	def SONAR_SCAN_VARIANT_STATUS="SUCCESS"
+	
+	// for mdpscm
+	def MAVEN_DEPLOY_STATUS ="SUCCESS"
+	def ARTIFACT_UPLOAD_STATUS="FAILED"
+	def EMAIL_NOTIFICATION_STATUS="FAILED"
+	def SEND_EMAIL_FOR_FAILED_STATUS="FAILED"
+
+	def parentFolderName = ""
+
+	config=job.configFile.asString()
+
+	def jobName = job.getFullName()
+	
+	if(job.getParent() instanceof Folder && job.getParent().getName() != jobName){
+		parentFolderName = job.getParent().getName()
+		JOB_NAME_STATUS = "SUCCESS"
+	}
+	
+	
+	
+	def disabled = job.isDisabled()	
+	
+	
+	if(!job.isConcurrentBuild()){
+		CONCURRENT_BUILD_STATUS = "SUCCESS"
+	}
+	
+	def lr = job.logRotator
+	
+	if(lr!=null)
+	{
+		LOGROTATOR_STATUS="SUCCESS"
+	  if(lr.getDaysToKeepStr() != ''){
+		DAYS_TO_KEEP_BUILD_STATUS = "SUCCESS"
+	  }
+	}
+
+	// Parameter
+	paramProp = job.getProperty(ParametersDefinitionProperty.class)
+	if(paramProp != null) {
+		if((param=paramProp.getParameterDefinition("Variant")) !=null || (param=paramProp.getParameterDefinition("variant")) !=null){
+			VARIANT_PARAM_STATUS="SUCCESS"
+			
+			if(param.defaultValue.trim()!=null && param.defaultValue.trim()!=""){
+				VARIANT_PARAM_DEFAULT_VALUE_STATUS="SUCCESS"
+			}
+		}	
+		
+		if((param=paramProp.getParameterDefinition("Label")) !=null || (param=paramProp.getParameterDefinition("label")) !=null){
+			LABEL_PARAM_STATUS="SUCCESS"
+			
+			if(param.defaultValue.trim()!=null && param.defaultValue.trim()!=""){
+				LABEL_PARAM_DEFAULT_VALUE_STATUS="SUCCESS"
+			}
+		}	
+		if((param=paramProp.getParameterDefinition("Env")) !=null || (param=paramProp.getParameterDefinition("Env")) !=null){
+			ENVIRONMENT_PARAM_STATUS="SUCCESS"
+			
+			if(param.defaultValue!=null && param.defaultValue.trim()!=null && param.defaultValue.trim()!=""){
+				ENVIRONMENT_PARAM_DEFAULT_VALUE_STATUS="SUCCESS"
+			}
+		}	
+		
+	}
+	
+
+	// Email configuration for SCM
+	if(null != job.publishersList && (job.publishersList.size() >0) || (null != job.publishersList.get(hudson.tasks.Mailer))){
+		EMAIL_NOTIFICATION_STATUS ="SUCCESS"
+	}
+	
+	
+	// Notify failed build status
+	if('SUCCESS'==EMAIL_NOTIFICATION_STATUS){
+		if(config =~ /\<dontNotifyEveryUnstableBuild\>false\<\/dontNotifyEveryUnstableBuild\>/){
+			SEND_EMAIL_FOR_FAILED_STATUS = "SUCCESS"
+		}
+	}
+
+	
+	// All Projects
+	if(job.getName() =~ /(?i)all.+projects/ ||job.getName() =~ /(?i)buildflow/ ){
+		// build periodic check ?
+		
+		output+= "${job.getAbsoluteUrl()}configure,${jobName},${disabled},${JOB_NAME_STATUS},${LOGROTATOR_STATUS},${DAYS_TO_KEEP_BUILD_STATUS},${CONCURRENT_BUILD_STATUS},${EMAIL_NOTIFICATION_STATUS},${SEND_EMAIL_FOR_FAILED_STATUS},${VARIANT_PARAM_STATUS},${VARIANT_PARAM_DEFAULT_VALUE_STATUS},${LABEL_PARAM_STATUS},${LABEL_PARAM_DEFAULT_VALUE_STATUS},${ENVIRONMENT_PARAM_STATUS},${ENVIRONMENT_PARAM_DEFAULT_VALUE_STATUS}\n"
+		
+	}else{
+		// Label expression
+		if((job.getAssignedLabel() == null || job.getAssignedLabel() == '' ) || (job.getAssignedLabel() !=null && (job.getAssignedLabel().getExpression().contains("linux") || job.getAssignedLabel().getExpression().contains("windows") || job.getAssignedLabel().getExpression().contains("aix"))))
+		{
+			ASSIGNED_LABEL_STATUS = "SUCCESS"
+		}
+
+		if((job.getFullName().contains('All-Projects') && (job.triggers==null || job.triggers.size() == 0)) || (job.triggers==null || job.triggers.size() == 0)){
+			SCHEDULE_STATUS ="SUCCESS"
+		}
+		
+		scm = job.getScm()
+
+		def path=""
+
+		if (scm==null || !(scm instanceof hudson.scm.IntegritySCM)){
+			PARENT_FOLDER_VARIANT_NAME = "SUCCESS"
+			SCM_PATH_ENV_STATUS = "SUCCESS"
+			SCM_PATH_VARIANT_STATUS = "SUCCESS"
+			SCM_CLEAN_COPY_STATUS ="SUCCESS"
+		}
+		else{
+			// TODO: if no path; success
+			path=(scm.configPath==null) ? "": scm.configPath.trim()
+			
+			def variantRegEx = path =~ /d=(.*?)#/
+			
+			if(variantRegEx.getCount() > 0 && variantRegEx.getAt(0) !=null && variantRegEx.getAt(0).size() > 1 ){
+				def variant = variantRegEx.getAt(0)[1]
+				if(variant!='' && job.getFullName().contains(variant)){
+					PARENT_FOLDER_VARIANT_NAME = "SUCCESS"
+				}
+			}
+
+			if(path.contains('${env'))
+			{
+				SCM_PATH_ENV_STATUS = "SUCCESS"
+			}
+			if(path.contains("Variant") || path.contains("variant")){
+				SCM_PATH_VARIANT_STATUS = "SUCCESS"
+			}
+			if(scm.cleanCopy){
+				SCM_CLEAN_COPY_STATUS ="SUCCESS"
+			}
+		}
+
+
+		// Validate sonar configuration
+		if(((job.JDK != null) && job.JDK.getName().contains('1.6') && config =~ /org.codehaus.mojo:sonar-maven-plugin:2.6:sonar/ ) || ((job.JDK != null) && !job.JDK.getName().contains('1.6') && config =~ /sonar:sonar/ ) || config =~ /sonar-runner.cmd/){
+			SONAR_SCAN_STATUS = "SUCCESS"
+		}
+	
+		// Sonar Configuration with Variant
+		if('SUCCESS'==VARIANT_PARAM_STATUS && SONAR_SCAN_STATUS=='SUCCESS'){	
+				if( !(config =~ /sonar.branch\s*=\s*\$[Vv]ariant/ ) && !(config.contains('-Dsonar.branch=%Variant%')) && !(config.contains('sonar.branch=%Variant%')) && !(config =~ /sonar.branch\s*=\s*\$\{[Vv]ariant\}/ )){
+					SONAR_SCAN_VARIANT_STATUS = "FAILED"
+				}
+		}
+		
+		if(job.hasProperty('builders')){
+			
+			if(job.buildersList.getAll(hudson.tasks.Maven).size() > 0){
+				def deployed = job.buildersList.getAll(hudson.tasks.Maven).findAll{
+				item -> (item.targets.contains('deploy'))
+				}
+
+				if(deployed.size() == 0){
+					MAVEN_DEPLOY_STATUS = "FAILED"
+				}
+			}
+			
+			// def deploy =  job.builders.findAll{ it.class.name.contains('hudson.tasks.Maven')}.findAll{
+				// task -> task.targets =~ /(?i)deploy/
+			// }
+			
+			// if(deploy.size() > 0){
+				// MAVEN_DEPLOY_STATUS = "SUCCESS"
+			// }
+			
+			// Artifact upload
+			if(config =~ /artifact-uploader/){
+				ARTIFACT_UPLOAD_STATUS = "SUCCESS"
+			}
+		}
+		
+		output+= "${job.getAbsoluteUrl()}configure,${jobName},${disabled},${JOB_NAME_STATUS},${LOGROTATOR_STATUS},${DAYS_TO_KEEP_BUILD_STATUS},${CONCURRENT_BUILD_STATUS},${EMAIL_NOTIFICATION_STATUS},${SEND_EMAIL_FOR_FAILED_STATUS},${VARIANT_PARAM_STATUS},${VARIANT_PARAM_DEFAULT_VALUE_STATUS},${LABEL_PARAM_STATUS},${LABEL_PARAM_DEFAULT_VALUE_STATUS},${ENVIRONMENT_PARAM_STATUS},${ENVIRONMENT_PARAM_DEFAULT_VALUE_STATUS},${ASSIGNED_LABEL_STATUS},${SCHEDULE_STATUS},${SCM_PATH_ENV_STATUS},${SCM_CLEAN_COPY_STATUS},${PARENT_FOLDER_VARIANT_NAME},${SONAR_SCAN_STATUS},${SONAR_SCAN_VARIANT_STATUS},${MAVEN_DEPLOY_STATUS},${ARTIFACT_UPLOAD_STATUS}\n"
+	}
+}
+
+println output

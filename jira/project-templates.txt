@@ -1,0 +1,13 @@
+for Software
+com.pyxis.greenhopper.jira:gh-scrum-template
+com.pyxis.greenhopper.jira:gh-kanban-template
+com.pyxis.greenhopper.jira:basic-software-development-template
+For Business 
+ 
+com.atlassian.jira-core-project-templates:jira-core-project-management
+com.atlassian.jira-core-project-templates:jira-core-task-management
+com.atlassian.jira-core-project-templates:jira-core-process-management
+For Service Desk
+ 
+com.atlassian.servicedesk:classic-service-desk-project
+com.atlassian.servicedesk:itil-service-desk-project

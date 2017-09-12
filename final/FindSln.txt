@@ -1,0 +1,72 @@
+/*
+ * Below script finds versions in the nexus artifact uploader
+ * 
+ * Author : Vijayanand Vitthal Phad
+ * 
+ */
+
+import jenkins.*;
+import jenkins.model.*
+import hudson.model.*
+import hudson.maven.*
+import hudson.tasks.*
+
+
+def output =  "Job,SVNRepo,Branch,Path,solution file"
+
+for(def item : Jenkins.instance.getAllItems(FreeStyleProject.class)) {
+		if(item.getFullName().toLowerCase().contains("ahs") 
+			|| item.getFullName().toLowerCase().startsWith("mdp")
+			||  item.isDisabled() 
+			|| (item.hasProperty('builders') && (null == item.builders))
+			|| (item.hasProperty('scm') && !(item.getScm() instanceof hudson.scm.SubversionSCM))
+			) {
+			continue
+		}
+		
+
+		list = []
+
+		for (builder in item.builders){
+			if(builder instanceof hudson.tasks.BatchFile){
+			  
+				def cmdL = builder.getCommand()
+				//println cmdL
+
+			 
+				
+			  cmdL.findAll("\\s+(\\S*\\.sln)?").each{
+				sln = it?.trim()
+				if("" != sln && !list.contains(sln)){
+					list.add(sln)
+				}
+				}
+						
+				}
+			}
+
+
+		if(!list.isEmpty()){
+			scm = item.getScm()
+			path = scm.locations.remote.join("")
+		  
+			lb = item.getLastBuild()
+			def resolver = lb?.buildVariableResolver
+			def sr = resolver?.resolve("SVNRepository")
+			def sb = resolver?.resolve("SVNBranch")
+			def snr = resolver?.resolve("SVNRevision")
+
+          
+			slnPath = path?.replaceAll('\\$\\{SVNRepository\\}',(sr?:""))
+			slnPath = slnPath?.replaceAll('\\$\\{SVNBranch\\}',sb?:"")
+			slnPath = slnPath?.replaceAll('\\@\\$\\{SVNRevision\\}',"")
+			
+			list.each{
+			  npath = slnPath + '/' + it?.replaceAll("\\\\", "/")
+			  println "${item.getFullName()},${item.getAbsoluteUrl()},${path},${sr},${sb},${snr},${npath}"
+			}
+		}
+
+}
+
+

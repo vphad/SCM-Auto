@@ -1,0 +1,61 @@
+/*
+ * Below script finds versions in the nexus artifact uploader
+ * 
+ * Author : Vijayanand Vitthal Phad
+ * 
+ */
+
+import jenkins.*;
+import jenkins.model.*
+import hudson.model.*
+import hudson.maven.*
+import hudson.tasks.*
+
+
+def output =  "Job,Command Text"
+
+for(def item : Jenkins.instance.getAllItems(FreeStyleProject.class)) {
+		if(item.getFullName().toLowerCase().contains("ahs") 
+			|| item.getFullName().toLowerCase().contains("mdp")
+			||  item.isDisabled() 
+			|| (item.hasProperty('builders') && (null == item.builders))
+			) {
+			continue
+		}
+		
+			found = false
+			
+			cmdText = ""
+			
+			// get build steps
+			for (builder in item.builders){
+				if(builder instanceof hudson.tasks.Shell || builder instanceof hudson.tasks.BatchFile){
+					def cmdL = builder.getCommand()?.toLowerCase()
+
+					if(cmdL?.contains('nexus-artifact-uploader-for-svn')){
+					def regex = cmdL =~ /\d+(.\d+)+/						
+					  
+					  regex.each{
+						  // number found in nexus url
+                        if(it[0] != "8082" && !found){
+                          found = true
+						  cmdText = cmdL
+                        }
+						}
+						
+					}
+				}
+
+		}
+		
+		if(found){
+			output += "\n${item.getAbsoluteUrl()}configure,${cmdText.replaceAll(',',' ')?.replaceAll("\\r?\\n", " --linebreak-- ")}"
+		}
+}
+
+
+println "-" * 80
+
+println output
+println "\n\nEnd" + ("-"*80)
+

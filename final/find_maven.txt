@@ -1,0 +1,23 @@
+import hudson.model.*
+import hudson.maven.*
+import hudson.tasks.*
+ 
+Jenkins.instance.getAllItems().each{
+item  ->
+
+	if(item.getFullName().contains('Sonar Upgrade') && (item instanceof FreeStyleProject) && !item.isDisabled() && item.hasProperty('builders') && (null != item.builders) )
+	{
+			  job.builders.each{ 
+					task -> 
+				
+					if(task.class.name.contains('hudson.tasks.Maven')){		
+					
+					if((task.targets.contains('clean') || task.targets.contains('install')) && !task.mavenName.toLowerCase().contains("sq"))){
+						println job.getAbsoluteUrl() + ", " + task.mavenName
+					}					  
+		}
+	}
+}
+
+
+println ""

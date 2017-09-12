@@ -1,0 +1,38 @@
+int MAX_ALLOWED_DURATION_IN_SECONDS = 30 * 1 // 6 hours
+
+
+  def busyExecutors = Jenkins.instance.computers
+                                .collect { 
+                                  c -> c.executors.findAll { it.isBusy() }
+                                }
+                                .flatten() // reminder: transforms list(list(executor)) into list(executor)
+
+def ok = true
+
+println "Busy Executors list"
+busyExecutors.each { e -> 
+  println e.getName()
+  
+  def name = e.getName()
+  
+  def rx = name =~ /executing (.*?) #\d+\s+/
+  
+  def jobName = ''
+  if(rx.getCount() > 0){
+   jobName = rx.getAt(0)[1]
+  }
+  
+  
+  int durationInSeconds = (System.currentTimeMillis() - e.executable.getTimeInMillis())/1000.0
+  
+  if(durationInSeconds > MAX_ALLOWED_DURATION_IN_SECONDS )
+  {
+    ok = false;
+  }
+  println "$jobName - duration=$durationInSeconds"
+  println "\n\n" 
+}
+
+println "Done"
+
+return ok

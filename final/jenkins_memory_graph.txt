@@ -1,0 +1,18 @@
+def job = Jenkins.instance.getItemByFullName('<job name>')
+
+builds =  job.getBuilds()
+
+println builds.size()	
+
+
+println "BuildUrl,Time,RAM"
+
+builds.each{
+  build ->
+  
+	def regex = build.logFile.text =~ /Mem:\s+\d+\s+\d+\s+(\d+\s+?)/
+
+		if(regex.getCount() > 0){
+			println "${build.getAbsoluteUrl()},${build.getTime().format("MM-dd-yyyy HH:mm:ss")},${regex.getAt(0)[1]}"
+		}
+}

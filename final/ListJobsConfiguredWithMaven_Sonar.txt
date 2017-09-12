@@ -1,0 +1,20 @@
+import hudson.model.*
+import hudson.tasks.*
+
+//All the projects on which we can apply the getBuilders method
+def allProjects = Hudson.instance.getAllItems().findAll{ it instanceof Project }
+
+
+
+mavenProjects = allProjects.findAll{
+  it.builders.findAll{ it.class.name.contains('hudson.tasks.Maven')}.findAll{
+    task -> task.targets.contains("sonar")
+  }
+  
+}
+
+mavenProjects.each{
+  println it.getFullDisplayName()
+}
+
+println "End"

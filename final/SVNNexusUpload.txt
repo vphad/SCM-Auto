@@ -1,0 +1,13 @@
+Jenkins.instance.getAllItems().each{
+  item ->
+  
+  if(!item.getFullName().toLowerCase().contains("ahs") && !item.getFullName().toLowerCase().contains("mdp") && !(item instanceof com.cloudbees.hudson.plugins.folder.Folder)){
+	  
+	  if(item.hasProperty('scm') && (item.getScm() instanceof hudson.scm.SubversionSCM)){	  
+		def config = item.getConfigFile().asString().toLowerCase()
+		println ("${item.getFullName()},${item.getAbsoluteUrl()},${config.contains('nexus-artifact-uploader-for-svn')}")
+	  }
+  }
+}
+
+println ''

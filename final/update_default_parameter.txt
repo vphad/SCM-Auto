@@ -1,0 +1,40 @@
+import hudson.model.*
+
+def folder=Jenkins.instance.getItemByFullName('Ratings/CAMS/1248911_SVN')
+
+def branch="branches/migration/1248911"
+def paramName="Branch"
+  
+for(item in folder.items) {
+	
+	if(item instanceof com.cloudbees.hudson.plugins.folder.Folder){
+		continue
+	}
+	
+	println "${item.getFullName()}"
+	
+  prop = item.getProperty(ParametersDefinitionProperty.class)
+  if(prop != null) {
+        
+	for(param in prop.getParameterDefinitions()) {
+      try {
+		  if("Branch"==param.name){
+				println ("${param.defaultValue}\t${branch}")            	
+				param.defaultValue=branch
+		  }
+        if("Variant"==param.name){
+          println ("${param.name}\t${paramName}")
+          println ("${param.defaultValue}\t${branch}")
+          param.name=paramName
+		  param.defaultValue=branch
+		  
+		  item.setProperty(ParametersDefinitionProperty.class,props)
+        }
+      }
+      catch(Exception e) {
+        println(param.name)
+      }
+    }
+    println()
+  }
+}

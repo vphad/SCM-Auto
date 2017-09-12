@@ -1,0 +1,30 @@
+def creds = com.cloudbees.plugins.credentials.CredentialsProvider.lookupCredentials(
+      com.cloudbees.plugins.credentials.common.StandardUsernameCredentials.class,
+      Jenkins.instance,
+      null,
+      null
+  );
+
+
+  // for (c in creds) {
+    	// println c.properties
+       // println(c.id + ": " + c.username + " - " + c.description)
+  // }
+  
+  
+def c = creds.findResult { it.username == "sys_devscm" ? it : null }
+   
+println(c.id + ": " + c.username + " - " + c.description)
+   
+
+if(null!=c && null!=c.id){
+  
+println "Updating job"
+
+def job=Jenkins.instance.getItemByFullName('/1250913_SVN/GMI/')
+
+job.scm = new hudson.scm.SubversionSCM('https://mdpsvn.ad.moodys.net:18080/svn/GMI/branches/migration/${Branch}', c.id,'.')
+
+job.save()
+  
+}

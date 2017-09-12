@@ -1,0 +1,227 @@
+import jenkins.*
+import jenkins.model.*
+import hudson.*
+import hudson.model.*
+
+import hudson.scm.*
+import hudson.tasks.*
+import com.cloudbees.hudson.plugins.folder.*
+
+jen = Jenkins.instance
+
+folder = jen.getItemByFullName('vphad_test')
+
+scmJobs = folder.getItems().findAll{
+  (it.hasProperty('scm') && null!=it.getScm()) && (it.getScm() instanceof hudson.scm.IntegritySCM) 
+}
+
+println "Total jobs with PTC SCM plug-in: ${scmJobs.size()}"
+
+OLDEXT = "_old"
+
+for(Item job: scmJobs){
+	println "="*80
+	println "Upgrading job: ${job.getFullName()}"
+	println "Url: ${job.getAbsoluteUrl()}"
+	
+	println "-"*80
+	
+	oldName = job.getName()
+	newName = job.getName() + OLDEXT
+
+	try{
+		// TODO: disable job
+	println ("\nStart - Disabling old job: " + job.getFullName());
+	
+	if(job.supportsMakeDisabled())
+	{
+		job.makeDisabled(true)
+	}
+	println ("End - Disabling old job: " + job.getFullName());
+	}catch(Exception e){
+		println "Failed to disable job - ${job.getFullName()}" + e.getMessage()
+		continue;
+	}
+	
+	try{
+		println ("\nStart - creating new job: " + oldName);
+		newCopy = jen.copy(job, oldName)
+		println ("\tCopied : " + newCopy.getFullName())
+		println ("End - creating new job: " + oldName);
+	}catch(Exception e){
+		println "Failed to copy job - ${oldName}, New name: ${newName}" + e.getMessage()
+		continue;
+	}
+	
+	
+	try{
+	println ("\nStart - Renaming old job: " + oldName);
+	job.renameTo(newName)
+	job.save()
+	println ("End - Renaming old job: " + job.getFullName());
+	}catch(Exception e){
+		println "Failed to rename job - ${oldName}" + e.getMessage()
+		continue;
+	}
+	
+
+	try{
+		println ("\nStart - updating scm for new job: " + newCopy.getFullName());
+		oldScm=newCopy.getScm()
+				
+		println ("\tCurrent SCM Settings ---------------")
+		println ("\tCI Server URL: " + oldScm.ciServerURL);
+		println ("\tURL: " + oldScm.integrityURL);
+		println ("\tServer Configuration: " + oldScm.serverConfig);
+		println ("\tProject User: " + oldScm.userName);
+		println ("\tProject User Password: " + oldScm.password);
+		println ("\tConfiguration Name: " + oldScm.configurationName);
+		println ("\tConfiguration Path: " + oldScm.configPath);
+		println ("\tInclude Filter: " + oldScm.includeList);
+		println ("\tExclude Filter: " + oldScm.excludeList);
+		println ("\tLine Terminator: " + oldScm.lineTerminator);
+		println ("\tRestore Timestamp: " + oldScm.restoreTimestamp);
+		println ("\tClean: " + oldScm.cleanCopy);
+		println ("\tSkip Author Info: " + oldScm.skipAuthorInfo);
+		println ("\tCheckpoint Before Build: " + oldScm.checkpointBeforeBuild);
+		println ("\tTag Name: " + oldScm.checkpointLabel);    	
+		println ("\tAlternate Workspace Directory: " + oldScm.alternateWorkspace);
+		println ("\tFetch Changed Workspace Files: " + oldScm.fetchChangedWorkspaceFiles);
+		println ("\tDelete Non Members: " + oldScm.deleteNonMembers);
+		println ("\tCheckout Thread Pool Size: " + oldScm.checkoutThreadPoolSize);
+		
+		
+		scmPath = oldScm.getConfigPath()
+		newScmPath = getNewConfigPath(scmPath)
+		
+		println "\tCreating new SCM configurations"
+		
+		newScm = new IntegritySCM(oldScm.serverConfig, newScmPath, oldScm.configurationName)
+		
+		// newScm.setCiServerURL( oldScm.ciServerURL);
+		// newScm.setIntegrityURL( oldScm.integrityURL);
+		// newScm.setServerConfig( oldScm.serverConfig);
+		// newScm.setUserName( oldScm.userName);
+		// newScm.setPassword( oldScm.password);
+		newScm.setConfigurationName( oldScm.configurationName);
+		// newScm.setConfigPath( oldScm.configPath);
+		newScm.setIncludeList( oldScm.includeList);
+		newScm.setExcludeList( oldScm.excludeList);
+		newScm.setLineTerminator( oldScm.lineTerminator);
+		newScm.setRestoreTimestamp( oldScm.restoreTimestamp);
+		newScm.setCleanCopy( oldScm.cleanCopy);
+		newScm.setSkipAuthorInfo( oldScm.skipAuthorInfo);
+		newScm.setCheckpointBeforeBuild( oldScm.checkpointBeforeBuild);
+		newScm.setCheckpointLabel( oldScm.checkpointLabel);    	
+		newScm.setAlternateWorkspace( oldScm.alternateWorkspace);
+		newScm.setFetchChangedWorkspaceFiles( oldScm.fetchChangedWorkspaceFiles);
+		newScm.setDeleteNonMembers( oldScm.deleteNonMembers);
+		newScm.setCheckoutThreadPoolSize( oldScm.checkoutThreadPoolSize);
+		
+		newCopy.setScm(newScm)		
+
+		println ("\n\tNew SCM Settings ---------------")
+		println ("\tCI Server URL: " + newScm.ciServerURL);
+		println ("\tURL: " + newScm.integrityURL);
+		println ("\tServer Configuration: " + newScm.serverConfig);
+		println ("\tProject User: " + newScm.userName);
+		println ("\tProject User Password: " + newScm.password);
+		println ("\tConfiguration Name: " + newScm.configurationName);
+		println ("\tConfiguration Path: " + newScm.configPath);
+		println ("\tInclude Filter: " + newScm.includeList);
+		println ("\tExclude Filter: " + newScm.excludeList);
+		println ("\tLine Terminator: " + newScm.lineTerminator);
+		println ("\tRestore Timestamp: " + newScm.restoreTimestamp);
+		println ("\tClean: " + newScm.cleanCopy);
+		println ("\tSkip Author Info: " + newScm.skipAuthorInfo);
+		println ("\tCheckpoint Before Build: " + newScm.checkpointBeforeBuild);
+		println ("\tTag Name: " + newScm.checkpointLabel);    	
+		println ("\tAlternate Workspace Directory: " + newScm.alternateWorkspace);
+		println ("\tFetch Changed Workspace Files: " + newScm.fetchChangedWorkspaceFiles);
+		println ("\tDelete Non Members: " + newScm.deleteNonMembers);
+		println ("\tCheckout Thread Pool Size: " + newScm.checkoutThreadPoolSize);
+		
+		println ("End - updating scm for new job: " + newCopy.getFullName());
+		
+	}catch(Exception e){
+		println "Failed to update scm for new job - ${oldName}, New name: ${newName}" + e.getMessage()
+		continue;
+	}
+	
+	try{
+		println ("\nStart - Save new job configuration: " + newCopy.getFullName())
+		newCopy.save()
+		println ("\tSaved : " + newCopy.getFullName())
+		println ("End - Save new job configuration: " + newCopy.getFullName())
+	}catch(Exception e){
+		println "Failed to save job - ${oldName}, New name: ${newName}" + e.getMessage()
+		continue;
+	}
+	
+	try{	
+		println ("\nStart - Move new job : " + newCopy.getFullName())
+		folderPath =getFolderNameForJob(oldName)
+		
+		def folder = jen.getItemByFullName(folderPath)
+				
+		if (folder == null) {
+		  throw new Exception("ERROR: Folder '$folderPath' not found")
+		}
+		
+		println "\tMoving to folder: $folderPath"
+		
+		Items.move(newCopy, folder)
+		println "End - Move new job"
+	}catch(Exception e){
+		println "Failed to move job - ${newCopy.getFullName()}" + e.getMessage()
+		continue;
+	}
+	
+	try{
+		// TODO: Enable job
+	println ("\nStart - Enabling new job: " + newCopy.getFullName());
+	
+	if(newCopy.supportsMakeDisabled())
+	{
+		newCopy.makeDisabled(false)
+	}else{
+		println "Failed: Job doesn't support enable/disable"
+	}
+	
+	println ("End - Enabling new job: " + newCopy.getFullName());
+	}catch(Exception e){
+		println "Failed to enable job - ${newCopy.getFullName()}" + e.getMessage()
+		continue;
+	}
+	
+	println "\nUpgrading Done for: " + oldName
+	println "="*80
+}
+
+String getFolderNameForJob(oldName){
+	
+	// TODO : Add mapping for the jobs and folders
+	return "vphad_test/Folder1"
+}
+
+String getNewConfigPath(String configPath){
+	println "scm old config path: " + configPath
+	if(!configPath.contains("d=")){
+		println "scm path doesn't contain variant; no update required"
+		return configPath
+	}
+	
+	di = configPath.indexOf("d=")
+	inHash = configPath.indexOf('#', di)
+	
+	inHash = (-1 == inHash ) ? configPath.size(): inHash
+	
+	variant = configPath.substring( di + 2 ,  inHash)
+
+	newPath = configPath.replace(variant, "\${env['Variant']}")
+
+	println "scm new config path: " + newPath
+	return newPath
+}
+
+println "End"

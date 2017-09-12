@@ -1,0 +1,5 @@
+User.getAll().each{
+  println it
+}
+
+println ""

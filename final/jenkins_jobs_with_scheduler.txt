@@ -1,0 +1,26 @@
+import hudson.triggers.TimerTrigger
+import com.cloudbees.hudson.plugins.folder.Folder
+
+Jenkins.instance.getAllItems().each{
+  item ->
+  
+  def cw=""
+  if(!(item instanceof Folder) &&!item.isDisabled()){
+	  if(item.hasProperty('customWorkspace') && null != item.customWorkspace){
+		  cw = item.getCustomWorkspace()
+	  }
+  
+  if(item.hasProperty('triggers') && null!=item.triggers && 0 < item.triggers.size()){
+       
+		item.triggers.each{
+			println item.getAbsoluteUrl() + "," + item.getFullName()  + ",${cw}," +  it.value.spec
+		}
+	}
+	
+	else{
+	println item.getAbsoluteUrl() + "," + item.getFullName()  + ",${cw},"
+	}
+  }
+}
+
+println ""

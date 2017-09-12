@@ -1,0 +1,77 @@
+import jenkins.*
+import jenkins.model.*
+import hudson.*
+import hudson.model.*
+
+import hudson.scm.*
+import hudson.tasks.*
+import com.cloudbees.hudson.plugins.folder.*
+
+jen = Jenkins.instance
+
+scmJobs = jen.getAllItems().findAll{
+  (it.hasProperty('scm') && null!=it.getScm()) && (it.getScm() instanceof hudson.scm.IntegritySCM) 
+}
+
+println "Total jobs with PTC SCM plugin: ${scmJobs.size()}"
+
+OLDEXT = "_old"
+
+for(Item job: scmJobs){
+	println "="*80
+	println "Upgrading job: ${job.getFullName()}"
+	println "Url: ${job.getAbsoluteUrl()}"
+	oldName = job.getName()
+	newName = job.getName().trim() + OLDEXT
+
+	try{
+	println ("Start Renaming job: " + oldName);
+	job.renameTo(newName)
+	
+	println ("End Renaming job: " + job.getName());
+	}catch(Exception e){
+		println "Failed to rename job - ${oldName}"
+		continue;
+	}
+	
+	println ("Updated name: " + job.name);
+	
+	try{
+		println ("Start creating new job: " + oldName);
+		newCopy = jen.copy(src, newName)
+		println ("Copied : " + newCopy.getFullName())
+		println ("End creating new job: " + oldName);
+	}catch(Exception e){
+		println "Failed to copy job - ${oldName}, New name: ${newName}"
+		continue;
+	}
+	
+	try{
+		println ("Start - Save new job configuration: " + oldName)
+		newCopy.save()
+		println ("Saved : " + newCopy.getFullName())
+		println ("End - Save new job configuration: " + oldName)
+	}catch(Exception e){
+		println "Failed to copy job - ${oldName}, New name: ${newName}"
+		continue;
+	}
+	
+	try{	
+		println ("Start - Move new job to folder: " + oldName)
+		folder=getFolderNameForJob(oldName)
+		Items.move(job, folder)
+		println "Moving job to the folder done"
+	}catch(Exception e){
+		println "Failed to copy job - ${oldName}, New name: ${newName}"
+		continue;
+	}
+	
+	println "Upgrading Done for: " + oldName
+	println "="*80
+}
+
+String getFolderNameForJob(oldName){
+	return ""
+}
+
+println "End"

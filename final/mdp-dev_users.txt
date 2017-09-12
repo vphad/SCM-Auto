@@ -1,0 +1,61 @@
+import jenkins.*
+import jenkins.model.*
+import hudson.*
+import hudson.model.*
+
+import hudson.scm.*
+import hudson.tasks.*
+import com.cloudbees.hudson.plugins.folder.*
+import com.cloudbees.hudson.plugins.folder.properties.*
+import com.cloudbees.hudson.plugins.folder.properties.AuthorizationMatrixProperty
+
+jen = Jenkins.instance
+
+output = ""
+
+jen.getItems().each{
+	if(it instanceof Folder){
+		processFolder(it)
+	}else{
+		processJob(it)
+	}
+}
+
+void processJob(Item job){
+
+		def matrix = job.getProperties().get(AuthorizationMatrixProperty.class)
+		
+		if(null!=matrix && null!=matrix.getAllSIDs() && matrix.getAllSIDs().size() > 0)
+		{
+			def sids = matrix.getAllSIDs().join(',')
+			println "${job.getAbsoluteUrl()},${job.getFullName()},${sids}"
+		}else{
+			// println "${job.getAbsoluteUrl()},${job.getFullName()}"
+		}
+}
+
+void processFolder(Item folder){
+
+		def matrix = folder.getProperties().get(AuthorizationMatrixProperty.class)
+		
+		if(null!=matrix && null!=matrix.getAllSIDs() && matrix.getAllSIDs().size() > 0)
+		{
+			def sids = matrix.getAllSIDs().join(',')
+			println "${folder.getAbsoluteUrl()},${folder.getFullName()},${sids}"
+		}else{
+			// println "${folder.getAbsoluteUrl()},${folder.getFullName()}"
+		}
+	
+	
+	folder.getItems().each{
+		if(it instanceof Folder){
+			processFolder(it)
+		}else{
+			processJob(it)
+			// println "${it.getFullName()}"
+		}
+	}
+}
+
+
+println ""

@@ -1,0 +1,117 @@
+import com.cloudbees.hudson.plugins.folder.*
+import jenkins.*
+import jenkins.model.*
+import hudson.*
+import hudson.model.*
+
+  
+  
+def jen = Jenkins.instance
+
+def resolver = build.buildVariableResolver
+
+def timeNow = new Date()
+def timeNowStr = timeNow.format('MM-dd-yyyy_HH_mm_ss')
+  
+println "Script starts ...----------------------------- " + timeNow
+
+def folders = resolver.resolve('Folders')
+
+def parentDirPath = resolver.resolve('ParentDir')
+
+def parentDir = new File(parentDirPath) 
+
+if(!parentDir.exists())
+{
+	println "Creating Parent dir: ${parentDir} "
+	parentDir.mkdirs()
+}else{
+  println "Parent dir already exists, skip create: ${parentDir}"
+}
+
+for(def folderName : folders.split(','))
+{
+	if(null==folderName || '' ==folderName){
+		println "Empty folder name"
+		continue
+	}
+	
+	
+	// def item = jen.getItemByFullName(folderName)
+	println "\n\n =========================================="
+	backupFolder(jen, timeNowStr, parentDir, folderName)
+}
+
+
+void backupFolder(def jen, def timeNowStr, def parentDir, def folderName){
+  
+  println "\n -----------------"
+  println "Backup folder Starts"
+  
+  	def folder = jen.getItemByFullName(folderName)
+   
+
+	if(null == folder || !(folder instanceof Folder)){
+	  println "Folder not found or doesn't exist or the type is not of folder, please check the name & provide absolute path : ${folderName}"
+	  println "Usage"	  
+	  return
+	}
+	
+	// println folder.getConfigFile().asString()
+	
+	def backupDirName = "${parentDir.getAbsolutePath()}/${folderName}_${timeNowStr}"
+
+	println "Backup directory : ${backupDirName}"
+
+	def backupDir = new File(backupDirName)
+
+	if(!backupDir.exists())
+	{
+      println "=====-----------------------------------======"
+		println "Creating backup dir: ${backupDirName} "
+		backupDir.mkdirs()
+      println "=====-----------------------------------======"
+	}else{
+	  println "Error: backup dir ${backupDirName} already exists."
+	}
+	
+	
+	println "Backup folder config"
+	def folderFile = folder.getConfigFile().getFile()
+	def folderPathStr = folderFile.getAbsolutePath()
+	println "Folder Source path: " + folderPathStr
+	// Path source = FileSystems.getDefault().getPath(item.configFile().getFile().getAbsolutePath())
+	  
+	def targetPathStr  = "${backupDir.getAbsolutePath()}/${folder.getName()}_folder_config.xml"  
+	println "Target path: " + targetPathStr	  
+	def targetFolderFile = new File(targetPathStr)
+	
+	targetFolderFile << folderFile.bytes 
+  
+	println "Backup folder config ... done"  
+	
+	
+	for(Item item: folder.getItems()){      
+	  if(item instanceof Folder){
+		println "SubFolder found: ${item.getName()}"
+		println "Creating backup for the folder..."
+		backupFolder(jen, timeNowStr, backupDir, item.getFullName())
+		println "Creating backup for the folder... Done"
+		continue
+	  }
+	  
+	  def sourceFile = item.getConfigFile().getFile()
+	  def sourcePathStr = item.getConfigFile().getFile().getAbsolutePath()
+	  println "Source path: " + sourcePathStr
+	  
+	  def targetFilePathStr  = "${backupDir.getAbsolutePath()}/${item.getName()}_job_config.xml"  
+	  println "Target path: " + targetFilePathStr
+	  
+	  def targetFile = new File(targetFilePathStr)
+	  
+	  targetFile << sourceFile.bytes 
+	  
+	}
+  
+  println "Backup folder Ends"
+}

@@ -1,0 +1,20 @@
+Jenkins.instance.getAllItems().each{
+job ->
+  
+  
+  
+if(job.getFullName().contains('Sonar Upgrade') && job.hasProperty('publishersList') && (null != job.publishersList) && (job.publishersList.size() >0) && (null != job.publishersList.get(hudson.tasks.Mailer))){
+		if(null!=job.publishersList.get(hudson.tasks.Mailer).recipients && ""!=job.publishersList.get(hudson.tasks.Mailer).recipients.trim() && job.publishersList.get(hudson.tasks.Mailer).recipients.trim().contains('Moodys-SCMTeam@moodys.com') )
+  {
+   
+     println job.getAbsoluteUrl() + ", " + job.publishersList.get(hudson.tasks.Mailer).recipients.trim()
+    
+      def result = job.publishersList.remove(hudson.tasks.Mailer)
+      println "Success"
+      job.save()
+    
+  }
+	}
+}
+
+println ''

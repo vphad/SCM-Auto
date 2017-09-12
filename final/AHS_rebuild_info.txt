@@ -1,0 +1,57 @@
+import jenkins.*
+import jenkins.model.*
+import hudson.*
+import hudson.model.*
+
+import hudson.scm.*
+import hudson.tasks.*
+import com.cloudbees.hudson.plugins.folder.*
+
+jen = Jenkins.instance.getItemByFullName('/AHS_MDP')
+
+jen.getItems().each{
+	if(it instanceof Folder){
+		processFolder(it)
+	}else{
+		processJob(it)
+	}
+}
+
+
+void processJob(Item job){
+	builds = job.getBuilds()
+  
+  	found = false
+	
+	builds.each{
+		build -> 
+			def parameters = build?.actions.find{ it instanceof ParametersAction }?.parameters
+			parameters.each {
+             // println "parameter ${it}"
+				val = it.toString()
+				if(val =~ /.*_[1-9]/)
+				{
+					found = true
+					println "$val"
+				}
+			}
+			
+			if(found){
+				found = false
+				println "${job.getFullName()},${build.getNumber()}"
+			}
+		}	
+	
+}
+
+void processFolder(Item folder){
+	folder.getItems().each{
+		if(it instanceof Folder){
+			processFolder(it)
+		}else{
+			processJob(it)
+		}
+	}
+}
+
+println ""

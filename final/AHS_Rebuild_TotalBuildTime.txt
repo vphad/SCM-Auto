@@ -1,0 +1,123 @@
+/*
+	This script fetches the build information of AHS jobs, report is generated in csv format. Copy the data & save to file with .csv
+	Setup the input details in #INPUT# section.
+*/
+
+
+import hudson.*
+import hudson.model.*
+
+import java.text.SimpleDateFormat
+
+import jenkins.*
+import jenkins.model.*
+
+/**********************************************************/
+// #INPUT#
+
+// Update the fields below
+fromStr = "05-01-2017 00:00:00"
+toStr = "06-01-2017 00:00:00"
+ahsFolderName = "ahs_ipoc"
+
+/**********************************************************/
+
+def jen = Jenkins.instance
+
+def allJobs = jen.getAllItems(AbstractProject.class)
+
+SimpleDateFormat sf = new SimpleDateFormat("MM-dd-yyyy HH:mm:ss")
+
+from = Date.parse("MM-dd-yyyy HH:mm:ss", fromStr)
+to = Date.parse("MM-dd-yyyy HH:mm:ss", toStr)
+
+long secondInMillis = 1000;
+long minuteInMillis = secondInMillis * 60;
+long hourInMillis = minuteInMillis * 60;
+long dayInMillis = hourInMillis * 24;
+
+long duration = minuteInMillis
+
+def output = ""
+
+for(Job job : allJobs) {
+	
+	if(!job.getFullName().trim().toLowerCase().startsWith(ahsFolderName)){
+		continue
+	}
+	
+	builds = job.getBuilds().byTimestamp(from.getTime(), to.getTime())
+
+	for(def build : builds){
+
+		def params  = build.getAction(hudson.model.ParametersAction.class)
+
+		def paramout = ""
+
+		def tag = ""
+		def branch = ""
+		def label = ""
+		if(params != null) {
+
+			// println("--- Parameters for " + item.name + " ---")
+			for(param in params.getParameters()) {
+				try {
+
+					if(param.getName().trim().toLowerCase().contains('tag') || param.getName().toLowerCase().trim()=="svnbranch"){
+						tag = (param instanceof hudson.scm.listtagsparameter.ListSubversionTagsParameterValue) ? param.getTag() : param.getValue()
+					}
+					else if(param.getName().toLowerCase().trim()=="branch"){
+						branch = (param instanceof hudson.scm.listtagsparameter.ListSubversionTagsParameterValue) ? param.getTag() : param.getValue()
+					}
+					else if(param.getName().toLowerCase().trim()=="label"){
+						label = (param instanceof hudson.scm.listtagsparameter.ListSubversionTagsParameterValue) ? param.getTag() : param.getValue()
+					}
+					else{
+						paramout += (param instanceof hudson.scm.listtagsparameter.ListSubversionTagsParameterValue) ? ( "," + param.getName()  + "," + param.getTag()) :  ( "," + param.getName()  + "," + param.getValue())
+					}
+
+				}
+				catch(Exception e) {
+					// println(param.name)
+				}
+			}
+		}
+
+		def builtOnServer = build.builtOn
+		def builtOn = ""
+
+		if(builtOnServer instanceof Slave){
+			builtOn = builtOnServer.name
+		}else{
+			builtOn = builtOnServer.getDisplayName()
+		}
+
+		def result  = build.getResult()
+
+		def buildTime = build.getTime().format("MM-dd-yyyy HH:mm:ss")
+		
+				action = build.getAction(jenkins.metrics.impl.TimeInQueueAction.class)
+
+		def totalDuration = ""
+		def totalQDuration = ""
+		def totalBuildDuration = ""
+		def totalJobDuration = ""
+
+		if (action != null) {
+			totalDuration = String.format( "%02.02f", (action.getTotalDurationMillis() / duration))
+			totalQDuration = String.format( "%02.02f", (action.getQueuingDurationMillis() / duration))
+			totalBuildDuration = String.format( "%02.02f", (action.getBuildingDurationMillis() / duration))
+			//totalJobDuration  = totalDuration + totalQDuration
+		}
+
+
+		// if(tag.contains('sprint-17') || branch.contains('sprint-17') || label.contains('sprint-17')){
+			output += ("\n${job.getFullName()},${build.getAbsoluteUrl()},${result},${builtOn},${buildTime},${totalQDuration},${totalBuildDuration},${totalDuration},${branch},${tag},${label},${paramout}")
+		// }
+	}
+
+}
+
+
+println "Job Name,Url,Result,Built On,Build Time, Q Duration,Build Duration,Total Build Duration,Branch,Tag,Label,Params"
+println output

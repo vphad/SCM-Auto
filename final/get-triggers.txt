@@ -1,0 +1,21 @@
+import hudson.triggers.TimerTrigger
+import com.cloudbees.hudson.plugins.folder.Folder
+
+Jenkins.instance.getAllItems().each{
+  item ->
+  
+  if(item.getFullName().contains('SFG-Central')){
+  
+  if(!(item instanceof Folder) &&!item.isDisabled()){
+	 
+  if(item.hasProperty('triggers') && null!=item.triggers && 0 < item.triggers.size()){
+       
+		item.triggers.each{
+			println item.getFullName() + "," +it.value.spec
+		}
+	}	
+  }
+  }
+}
+
+println ""

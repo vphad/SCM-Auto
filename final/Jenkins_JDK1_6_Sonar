@@ -1,0 +1,81 @@
+import hudson.scm.*
+import hudson.tasks.*
+import com.cloudbees.hudson.plugins.folder.*
+
+jen = Jenkins.instance
+
+output = ""
+
+ignoredFolderList=['AHS_IPOC', 'AHS_MDP']
+
+ignoredJobList=[]
+
+failed = false
+
+logs=""
+
+println "Url,Name,JDK,Sonar"
+
+jen.getItems().each{
+	if(it instanceof Folder){
+		processFolder(it)
+	}else{
+		processJob(it)
+	}
+}
+
+void processJob(Item job){
+	
+	if(ignoredJobList.contains(job.getFullName())){
+		logs += ("Ignored job ${job.getFullName()}\n")
+      	return
+	}
+	
+	config=job.configFile.asString()
+	
+	if((job.JDK != null) && job.JDK.getName().contains('1.6')){
+		
+		def sonarRegex = config =~ /<targets>(.*:sonar?)<\/targets>/
+
+		if(sonarRegex.getCount()>0){
+          def sonarVal = sonarRegex.getAt(0)[1]
+          
+          //if(!sonarVal.trim().contains('sonar-maven-plugin:2.6')){
+          		println "${job.getAbsoluteUrl()},${job.getFullName()},${job.isDisabled()},${job.JDK},${sonarVal}"
+          // }
+		}
+	}
+	
+}
+
+void processFolder(Item folder){
+	// println folder.getFullName()
+	
+	if(ignoredFolderList.contains(folder.getFullName())){
+		logs += ("Ignored Folder ${folder.getFullName()}\n")
+      	return
+	}
+	
+	folder.getItems().each{
+		if(it instanceof Folder){
+			processFolder(it)
+		}else{
+			processJob(it)
+			// println "${it.getFullName()}"
+		}
+	}
+}
+
+
+
+
+
+println "\n\nLog Summary: "
+println "-------------------"
+println logs
+
+println "\nDone"
+
+println "\nFailed: ${failed}"
+
+return failed

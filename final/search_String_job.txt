@@ -1,0 +1,14 @@
+def folder = Jenkins.instance.getItemByFullName('Ratings/SRDS/1253065')
+
+folder.getItems().each{
+  job ->
+ 
+  
+  if(job.getConfigFile().asString().contains("")){
+    println job.getName()
+  }
+  
+}
+
+
+println ""

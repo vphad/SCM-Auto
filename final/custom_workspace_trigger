@@ -1,0 +1,111 @@
+Jenkins.instance.getItemByFullName('/Ratings/AccuRate/1247246/Accurate-EPI2-CmnWrkspace').getItems().each{
+  if(it.hasProperty('customWorkspace') && (it.getCustomWorkspace() !=null)){
+    println "${it.getAbsoluteUrl()},${it.getCustomWorkspace()}"
+  }
+}
+
+println ""
+
+
+jen=Jenkins.instance
+
+folders=["/FIG/GMI"]
+
+for(def p : folders){
+
+  jen.getItemByFullName(p).getItems().each{
+    processFolder(it.getFullName())
+  }
+                
+}
+
+def processFolder(p){
+    j=jen.getItemByFullName(p)
+  
+  j.getItems().each{
+    if(it.hasProperty('customWorkspace') && (it.getCustomWorkspace() !=null)){
+    println "${it.getFullName()},${it.getCustomWorkspace()}"
+  }
+     }
+
+}
+
+
+
+
+jen=Jenkins.instance
+
+folders=["/Ratings/AccuRate/1247246"]
+
+for(def p : folders){
+
+  processFolder(p)
+}
+
+def processFolder(p){
+  
+  j=jen.getItemByFullName(p)
+  
+  j.getItems().each{
+    
+    if(it instanceof com.cloudbees.hudson.plugins.folder.Folder){
+    	processFolder(it.getFullName())
+    }else{    
+      sch = ""
+      if(it.getTriggers()!=null){
+              
+        it.getTriggers().each{        
+          t ->
+          
+          if(t.value instanceof hudson.triggers.TimerTrigger){  
+             println t
+          	sch+= " " + t.value.getSpec()
+          }
+        }
+      }
+      println "${it.getFullName()},${it.customWorkspace},${sch}"
+    }
+  }
+
+}
+
+
+
+jen=Jenkins.instance
+
+folders=["/Ratings/AccuRate"]
+
+for(def p : folders){
+
+  jen.getItemByFullName(p).getItems().each{
+    processFolder(it.getFullName())
+  }
+                
+}
+
+def processFolder(p){
+  
+  j=jen.getItemByFullName(p)
+  
+  j.getItems().each{
+    
+    if(it instanceof com.cloudbees.hudson.plugins.folder.Folder){
+    	processFolder(it.getFullName())
+    }else{    
+      sch = ""
+	  path=""
+      if(it.getTriggers()!=null){
+              
+        it.getTriggers().each{        
+          t ->
+          
+          if(t.value instanceof hudson.triggers.TimerTrigger){               
+          	sch+= " " + t.value.getSpec()
+          }
+        }
+      }
+      println "${it.getAbsoluteUrl()}configure,${it.getFullName()},${it.getCustomWorkspace()==null ? "" :it.getCustomWorkspace() },${sch}"
+    }
+  }
+
+}

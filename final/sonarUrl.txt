@@ -1,0 +1,1 @@
+http://ftc-lcswcapp301:9900/api/measures/component?componentId=AVseyTaiAXbMBE9Mfu4P&metricKeys=blocker_violations,critical_violations,major_violations,minor_violations,info_violations

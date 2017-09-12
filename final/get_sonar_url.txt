@@ -1,0 +1,22 @@
+mib=Jenkins.instance.getItemByFullName('/MDP_SCM_JOBS/MIB')
+
+mib.getItems().each{
+
+  build=it.getLastSuccessfulBuild()
+  
+  if(build!=null){
+  logText = build.getLogFile().text
+  
+  sonarregex = logText =~ /ANALYSIS SUCCESSFUL\, you can browse (.*)?/
+  
+  if(sonarregex.getCount() > 0){
+   sonarregex.each{
+      url ->
+      println url[1]
+    }
+  }
+  }
+  
+}
+
+println ""

@@ -1,0 +1,70 @@
+import jenkins.*
+import jenkins.model.*
+import hudson.*
+import hudson.model.*
+
+
+def jen = Jenkins.instance
+
+def today = new Date()
+def lastMonth = today - 1
+
+long secondInMillis = 1000;
+long minuteInMillis = secondInMillis * 60;
+long hourInMillis = minuteInMillis * 60;
+long dayInMillis = hourInMillis * 24;
+
+long duration = minuteInMillis 
+
+allJobs = jen.getAllItems().findAll{ job ->
+	(job instanceof Job) && !job.isDisabled() && (job.getLastCompletedBuild()!=null) && (job.getLastCompletedBuild().getTime() > lastMonth)
+}
+
+mavenProjects = allJobs.findAll{
+  if(it.hasProperty('builders') && it.builders!=null){
+    it.builders.findAll{ it.class.name.contains('hudson.tasks.Maven')}.findAll{
+    task -> task.targets.contains("sonar")
+    }
+  }  
+}
+
+println "Job,Url,Build Time,Sonar PDF time,pdf %of actual,time without pdf plugin,Actual Build Duration,Total Build Duration,Q Duration"
+
+for(Job item : mavenProjects)
+{
+	// item =  jen.getItemByFullName('/MSP-Group/MSP-1.0.7-Paremus')
+
+	def log = item.getLastCompletedBuild().logFile.text
+	
+	action = item.getLastCompletedBuild().getAction(jenkins.metrics.impl.TimeInQueueAction.class)
+
+	def totalDuration = 0
+	def totalQDuration = 0
+	def totalBuildDuration = 0
+	def totalJobDuration = 0
+
+	if (action != null) {
+		totalDuration = (action.getTotalDurationMillis() / duration)
+		totalQDuration = (action.getQueuingDurationMillis() / duration)
+		totalBuildDuration = (action.getBuildingDurationMillis() / duration)
+		//totalJobDuration  = totalDuration + totalQDuration
+	}
+
+	def childFailureMatcher1 = log =~ /\[\d+:\d+:\d+\.\d+\]\s+.*sonarpdf-maven-plugin.*generate\.\.\./
+  	def childFailureMatcher = log =~ /\[\d+:\d+:\d+\.\d+\]\s+.*sonarpdf-maven-plugin.*generate done:\s+\d+\s+ms/
+
+	if(childFailureMatcher.count > 0 && childFailureMatcher1.count > 0)
+	{
+		startLine = childFailureMatcher.getAt(0)
+
+		// println startLine
+		startTime = startLine =~/\d+/
+		
+		// println startTime
+		
+		pdfreportTime = (Integer.parseInt(startTime.getAt(startTime.size().intValue() - 1)) / (1000 * 60))
+		
+           
+      println "${item.getFullName()},${item.getLastCompletedBuild().getAbsoluteUrl()},${item.getLastCompletedBuild().getTime().format("MM-dd-yyyy HH:mm:ss")}," + String.format( "%02.02f", pdfreportTime) + ","+ String.format("%02.02f", (pdfreportTime/totalBuildDuration) * 100) + ",${String.format( '%02.02f', totalBuildDuration - pdfreportTime)},${String.format( '%02.02f', totalBuildDuration)},${String.format( '%02.02f', totalDuration)},${String.format( '%02.02f', totalQDuration)}"
+	}
+}

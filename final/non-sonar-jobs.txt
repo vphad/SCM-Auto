@@ -1,0 +1,19 @@
+println "Job Name,Url"
+
+for(def job: Jenkins.instance.getAllItems()){
+
+  if(!(job instanceof com.cloudbees.plugins.flow.BuildFlow) && job.hasProperty('scm') && (job.getScm() instanceof hudson.scm.SubversionSCM) && job.getScm()!=null){
+    
+    def conf = job.getConfigFile().asString()
+    
+    if(!conf.contains('sonar-runner') && !conf.contains('maven-sonar-scan') 
+       && !conf.contains('sonar:sonar') 
+       && !conf.contains('org.codehaus.mojo:sonar-maven-plugin:2.6:sonar')){
+      println job.getFullName() + "," + job.getAbsoluteUrl() + "configure"
+    }
+    
+    
+  }
+}
+
+println ''

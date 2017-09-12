@@ -1,0 +1,166 @@
+/*
+ * Below script updates the maven configuration for the Jenkins job for Sonar upgrade activity
+ * 
+ * Author : Vijayanand Vitthal Phad
+ * 
+ * Script requires update to the fields as provided in comments of the code
+ */
+
+import hudson.model.*
+import hudson.maven.*
+import hudson.tasks.*
+
+
+// new maven to set
+def newMavenName="Maven 3"
+
+// Set to true for updates
+def updateJobs = true
+
+def log = ""
+
+def output =  "Job Name,Job Url,Node,Disabled,JDK,Maven Name,Targets,Pom,Properties,JVM Options,Private Repo,Settings,Global Settings,Custom Script"
+
+for(def item : Jenkins.instance.getAllItems(FreeStyleProject.class)) {
+
+	  if(item.getFullName().toLowerCase().contains('ahs')){
+		continue
+	  }
+
+	// For test
+	// for(def item : Jenkins.instance.getItemByFullName('some folder').getItems()) {
+	try{
+
+		// To update specific folders; uncomment below folder path
+		if(/*item.getFullName().startsWith("<FolderName>")  &&*/  !item.isDisabled() && item.hasProperty('builders') && (null != item.builders) ) {
+			def updated = false
+
+			def assignedNode = item.getAssignedLabel()?.getName()
+
+			def isDisabled = item.isDisabled()
+
+
+			// get build steps
+			for (builder in item.builders){
+
+				// sonar
+				if ((builder instanceof hudson.tasks.Maven) && builder.targets.toLowerCase().contains('sonar'))  {
+
+					def jdk = getJDK(item)
+
+					def jobName = item.getFullName();
+					def jobUrl =  item.getAbsoluteUrl();
+
+					def jmTargets =  builder.targets;
+					def jmTargetsText = jmTargets?.replaceAll("(\\r|\\n|\\r\\n)+", " \\\\n ")
+
+					def jmMavenName =  builder.mavenName;
+					def jmPom =  builder.pom;
+
+					def jmProperties =  builder.@properties;
+					def jmPropertiesText = jmProperties?.replaceAll("(\\r|\\n|\\r\\n)+", " \\\\n ")
+
+					def jmJVMOptions =  builder.jvmOptions;
+					def jmPrivateRepository =  builder.usePrivateRepository;
+					def jmSettings =  builder.settings;
+					def jmGlobamSettings =  builder.globalSettings;
+
+					def newProps = ""
+
+					if(null!=jmProperties && ""!=jmProperties.trim()){
+						def props  = new Properties()
+						props.load(new StringReader(jmProperties))
+
+						props.each{ k, v ->
+							newProps += " -D" + k?.trim() + "=" + v?.trim()
+						}
+					}
+
+					output += "\n${jobName},${jobUrl},${assignedNode},${isDisabled},${jdk},${jmMavenName},${jmTargetsText},${jmPom},${jmPropertiesText},${jmJVMOptions},${jmPrivateRepository},${jmSettings},${jmGlobamSettings}"
+
+					if(updateJobs)
+					{
+						switch(jdk?.toLowerCase().trim()){
+							case "jdk1.8":
+
+								def newBuilder = null
+
+								def newCommandText = ""
+
+								if(assignedNode?.trim()?.toLowerCase()?.contains("win")){
+									newCommandText = "E:\\mdp\\app\\bin\\maven-sonar-scan.cmd  " + ((jmPom!=null && jmPom.trim() !="") ? " -f ${jmPom}" : " ") + (newProps!=null && newProps.trim()!="" ? " ${newProps} ": " ")
+									newBuilder = new hudson.tasks.BatchFile(newCommandText)
+								}else{
+									newCommandText = "/opt/mdp/app/bin/maven-sonar-scan " + ((jmPom!=null && jmPom.trim() !="") ? " -f ${jmPom}" : " ") + (newProps!=null && newProps.trim()!="" ? " ${newProps} ": " ")
+									newBuilder = new  hudson.tasks.Shell(newCommandText)
+								}
+
+							// UNCOMMENT FOR UPDATE
+								//item.buildersList.replace(builder, newBuilder)
+								//updated = true
+
+								output +=  "\n${jobName},${jobUrl},${assignedNode},${isDisabled},${jdk},,,${jmPom},${newProps},,,,,${newCommandText}"
+								break
+
+							// case "jdk1.8":
+							// // Update maven if not Maven 3
+								// if(null!=jmMavenName &&  !newMavenName?.equalsIgnoreCase(jmMavenName?.trim())){
+									// def newMaven = new Maven(builder.targets, newMavenName ,builder.pom,builder.@properties,builder.jvmOptions,builder.usePrivateRepository,builder.settings,builder.globalSettings);
+
+									
+									// item.buildersList.replace(builder, newMaven);
+									// updated = true
+
+									// output += "\n${jobName},${jobUrl},${assignedNode},${isDisabled},${jdk},${newMavenName},${jmTargetsText},${jmPom},${jmPropertiesText},${jmJVMOptions},${jmPrivateRepository},${jmSettings},${jmGlobamSettings}"
+								// }
+								// break
+
+							default:
+								log += "\n Error: No JDK configured for Job - ${jobName} \nUrl - ${jobUrl}"
+								break
+						}
+
+					}
+				}
+			}
+
+			if(updated && updateJobs){
+				// Save Jenkins job if updated
+				// UNCOMMENT FOR UPDATE
+				// item.save()
+
+				log += "\n Info: Updated - ${item.getFullName()}, Url - ${item.getAbsoluteUrl()}"
+			}
+		}
+
+
+	}catch(Exception e){
+		println "Failed to update maven-sonar configuration for job ${item.getFullName()},${item.getAbsoluteUrl()}  - " + e.getMessage()
+		printStackTrace(e)
+	}
+}
+
+
+println log
+
+println "-" * 80
+
+println output
+println "\n\nEnd" + ("-"*80)
+
+
+String printStackTrace(Exception e){
+	StringWriter sw = new StringWriter();
+	e.printStackTrace(new PrintWriter(sw));
+	println sw.toString();
+
+}
+
+def getJDK(def item){
+	def jdk = ""
+	if(item.hasProperty('JDK') && null!=item.getJDK() && '' != item.getJDK().getName().trim()){
+		jdk = item.getJDK().getName()
+	}
+
+	return jdk
+}

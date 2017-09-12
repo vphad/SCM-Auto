@@ -1,0 +1,153 @@
+import jenkins.*
+import jenkins.model.* 
+import hudson.* 
+import hudson.model.*
+import java.util.concurrent.*
+  
+
+def resolver = build.buildVariableResolver
+  
+def threshold1Str = resolver.resolve('Threshold1')
+def threshold2Str = resolver.resolve('Threshold2')
+def folderPath = resolver.resolve('Folder')
+def ignoreListStr = resolver.resolve('IgnoredJobs')
+def threshold2JobsStr = resolver.resolve('Threshold2Jobs')
+
+// sample values
+// folderPath = 'AHS_IPOC'
+// ignoreList = ['AHS_IPOC/AHS/TESTS/selenium-pega-autotests']
+// threshold2Jobs = ['AHS_IPOC/AHS/_build-all']
+
+if(null==threshold1Str || "" == threshold1Str.trim()){
+    println "Invalid threshold1 value: ${threshold1Str}"
+  	return 1
+
+}
+
+
+
+if(null==threshold2Str || "" == threshold2Str.trim()){
+    println "Invalid threshold2 value: ${threshold2Str}"
+  	return 1
+}
+
+threshold1 =  TimeUnit.MINUTES.toMillis(Long.parseLong(threshold1Str))
+threshold2 =  TimeUnit.MINUTES.toMillis(Long.parseLong(threshold2Str))
+
+
+
+if(null==folderPath || folderPath.trim() == ""){
+  println "Invalid folder name or path: ${folderPath}"
+  return 1
+}
+
+folderPath = folderPath.trim()
+
+if(null == ignoreListStr){
+	// if null; set as blank
+	ignoreListStr = ""
+}
+
+ignoreList = Arrays.asList(ignoreListStr.split(','))
+
+println "Ignored Job List: ${ignoreList}"
+
+if(null == threshold2JobsStr){
+	// if null; set as blank
+	threshold2Jobs = ""
+}
+
+threshold2Jobs = Arrays.asList(threshold2JobsStr.split(','))
+
+println "Threshold2 Job List: ${threshold2Jobs}"
+
+// get Jenkins instance
+def jen = Jenkins.instance
+  
+// Get folder to analyze
+def folder = jen.getItemByFullName(folderPath)
+
+if(null==folder){
+  println "Invalid folder name or path: ${folderPath}"
+  return 1
+}
+
+println "Analysing jobs in folder : ${folderPath}"
+
+allJobs = folder.getAllJobs().findAll{ job ->
+	(job instanceof Job) && !job.isDisabled()
+}
+
+def flag = 0
+
+// duration in minutes
+def duration = 1000 * 60 
+
+def output = ""
+
+def checkJobList = ""
+
+lastBuilds = allJobs.each{ job ->
+  
+  	checkJobList += ("\n" + job.getFullName())
+    if(!ifInIgnoreList(job.getFullName())){
+		
+		lastBuild = job.getLastBuild()
+	 
+		if(lastBuild!=null && lastBuild.isInProgress() && (null!=lastBuild.getExecutor())){
+		  def buildTime = lastBuild.getTime()
+		  now = new Date()
+		  def difference = now.time - buildTime.time
+		  
+		  def action = lastBuild.getAction(jenkins.metrics.impl.TimeInQueueAction.class)
+		  def totalQDuration = ""
+		  if(action!=null)
+		  {          
+			  totalQDuration = String.format( "%02.02f", (action.getQueuingDurationMillis() / duration))
+		  }
+				  
+		  if (difference > getThreshold(job.getFullName())) {
+			flag = 1
+			output+= "${job.getFullName()},${lastBuild.getAbsoluteUrl()},${lastBuild.getTime().format('MM-dd-yyyy HH:mm:ss')},${totalQDuration},${String.format( "%02.02f", (difference/(1000*60)))}\n"			
+		   }
+		}
+	}
+}
+
+println "-----------------------------------"
+println "Job,Url,Last Build Time,Q Time (Min),Running For Mins."
+println output
+println "\n\n-----------------------------------"
+println "End"
+
+
+println "Checked Below jobs"
+// println checkJobList
+
+
+
+
+
+return flag
+
+// TODO: report output to csv file
+
+// ignore this jobs for analysis
+boolean ifInIgnoreList(String jobName){
+	if(ignoreList.contains(jobName))
+	{
+		println "Ignoring: ${jobName}"		
+		return true
+	}
+}
+
+// get threshold by jobs; some jobs are given different threshold
+long getThreshold(String jobName){
+  if(threshold2Jobs.contains(jobName)){
+    
+    println "Checking Threshold2 = ${threshold2}: ${jobName}"
+    return threshold2
+  }
+  
+  return threshold1
+}

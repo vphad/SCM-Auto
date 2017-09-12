@@ -1,0 +1,48 @@
+import java.text.DecimalFormat
+
+builds = Jenkins.instance.getItemByFullName('/MDP/Monitor/windows_monitor/label=d-swin403').getBuilds()
+
+println "Build No,Build Time,HeapSizePerGCThread,InitialHeapSize,LargePageHeapSizeThreshold,Total Physical Memory,Available Physical Memory,Virtual Memory Max Size,Virtual Memory Available,Virtual Memory In Use"
+
+DecimalFormat df = new DecimalFormat("#.##");
+
+builds.each{
+  build -> 
+	try{
+	
+		text = build.getLogFile().text
+	  
+		hzpgctregex = (text =~ /HeapSizePerGCThread\s*=\s*(\d*)?\s*/)
+		hzpgct = (hzpgctregex.getAt(0)[1]).toInteger() / (1024 * 1024)
+	  
+		ihsregex = (text =~ /InitialHeapSize\s*:=\s*(\d*)?\s*/)
+		ihs = (ihsregex.getAt(0)[1]).toInteger() / (1024 * 1024)
+	  
+		lphstregex = (text =~ /LargePageHeapSizeThreshold\s*=\s*(\d*)?\s*/)
+		lphst = (lphstregex.getAt(0)[1]).toInteger() / (1024 * 1024)
+		
+		tpmregex = (text =~ /Total Physical Memory:\s+(.*)?\s+MB/)
+		tpm = tpmregex.getAt(0)[1].replaceAll(',','')
+	  
+		apmregex = (text =~ /Available Physical Memory:\s+(.*)?\s+MB/)
+		apm = apmregex.getAt(0)[1].replaceAll(',','')
+	  
+		vmmsregex = (text =~ /Virtual Memory: Max Size:\s+(.*)?\s+MB/)
+		vmms = vmmsregex.getAt(0)[1].replaceAll(',','')
+	  
+		vmaregex = (text =~ /Virtual Memory: Available:\s+(.*)?\s+MB/)
+		vma = vmaregex.getAt(0)[1].replaceAll(',','')
+	  
+		vmiuregex = (text =~ /Virtual Memory: In Use:\s+(.*)?\s+MB/)
+		vmiu = vmiuregex.getAt(0)[1].replaceAll(',','')
+
+
+      println "${build.number},${build.getTime()},${df.format(hzpgct)},${df.format(ihs)},${df.format(lphst)},$tpm,$apm,$vmms,$vma,$vmiu"
+	
+	}catch(e){
+      //println e
+	}
+}
+
+
+println ""

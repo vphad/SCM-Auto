@@ -1,0 +1,15 @@
+def folder = Jenkins.instance.getItemByFullName('Ratings/SRDS/1253065/SRDS-Derived-Data-derived-rating-management-service')
+
+//folder.getItems().each{
+//  job ->
+  
+  if(job.getScm()!=null && job.getScm() instanceof hudson.scm.IntegritySCM){
+    println "Updating ${job.getName()}"
+	job.getScm().setConfigPath(job.getScm().getConfigPath().replaceAll("d=1253065","b=\$\{env\['Label'\]\}"))
+
+	job.save()
+  }
+//}
+
+
+println ""

@@ -1,0 +1,16 @@
+println "Job Name,Url,Days To Keep,Number of Days To Keep,Artifact Days to keep,Artifact Number to Keep"
+
+for(def job: Jenkins.instance.getAllItems()){
+
+  if(job.hasProperty('buildDiscarder')){
+    d = job.buildDiscarder
+    
+    if (d) {    
+      println "${job.getFullName()},${job.getAbsoluteUrl()},${d.daysToKeep},${d.numToKeep},${d.artifactDaysToKeep},${d.artifactNumToKeep}"    
+    } else {
+      println "${job.getFullName()},${job.getAbsoluteUrl()}"    
+    }
+  }
+}
+
+println ''

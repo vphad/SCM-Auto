@@ -1,0 +1,52 @@
+node('windows') {
+    // checkout scm: [$class: 'IntegritySCM',configurationName: UUID.randomUUID().toString(), serverConfig: 'd07fa304-80f4-44f6-93aa-43181a926486', integrityURL: 'http://appm:7001', configPath: '#/Moodys Integration Bus#d=1250120#Coding/common_net/common_net/Framework_3.5/MIB_REST/Moodys.MIB.Common', cleanCopy: true, checkoutThreadPoolSize: 5, hostName: 'appm', port: 7001, ipPort: 0, ciServerURL:'http://mdpdev.ad.moodys.net:8180/'], poll: false
+    checkout scm: [$class: 'IntegritySCM',configurationName: UUID.randomUUID().toString(), serverConfig: 'd07fa304-80f4-44f6-93aa-43181a926486', configPath: '#/Banking Financial Metrics#d=1251652#Coding',checkpointBeforeBuild:false, cleanCopy: true], poll: false
+	
+	def buildFailed = false
+	def failMessage = ""
+		
+	try{
+	echo ("Executing FDC-32 bit build")
+    bat "%MDP_HOME%\\bin\\nuget-runner.cmd restore FDC\\FDC-UI\\FDC\\FDC_32Bit.sln -NoCache"
+	bat "%MDP_HOME%\\bin\\vs2010-devenv.cmd FDC\\FDC-UI\\FDC\\FDC_32Bit.sln /Rebuild Release"
+	bat "mdppkg deploy -s %DOTNET_DEPLOY_REPO% -a %DOTNET_DEPLOY_REPO_API_KEY% FDC\\FDC-UI\\FDC\\FDC_32Bit.sln -p Configuration=Release"
+	}catch(Exception e){
+		buildFailed = true
+		failMessage +=  ("\nFDC-32 bit build failed: " + e.getMessage())
+		echo("FDC-32 bit build failed: " + e.getMessage())
+		e.printStackTrace()
+	}
+    
+	try{
+	echo ("Executing FDC-64 bit build")
+	bat "%MDP_HOME%\\bin\\nuget-runner.cmd restore FDC\\FDC-UI\\FDC\\FDC_64Bit.sln -NoCache"
+	bat "%MDP_HOME%\\bin\\vs2010-devenv.cmd FDC\\FDC-UI\\FDC\\FDC_64Bit.sln /Rebuild Release"
+	bat "mdppkg deploy -s %DOTNET_DEPLOY_REPO% -a %DOTNET_DEPLOY_REPO_API_KEY% FDC\\FDC-UI\\FDC\\FDC_64Bit.sln -p Configuration=Release"
+	}catch(Exception e){
+		buildFailed = true
+		failMessage +=  ("\nFDC-64 bit build failed: " + e.getMessage())
+		echo("FDC-64 bit build failed: " + e.getMessage())
+		e.printStackTrace()
+	}
+	
+	try{
+	echo ("Executing WFR built")
+	bat "%MDP_HOME%\\bin\\nuget-runner.cmd restore FDC\\FDC-UI\\FDC\\WFRSolution.sln -NoCache"
+	bat "%MDP_HOME%\\bin\\msbuild-v4.0 FDC\\FDC-UI\\FDC\\WFRSolution.sln /t:Rebuild /p:Configuration='Release'"
+	bat "mdppkg deploy -s %DOTNET_DEPLOY_REPO% -a %DOTNET_DEPLOY_REPO_API_KEY% FDC\\FDC-UI\\FDC\\WFRSolution.sln -p Configuration=Release"
+	}catch(Exception e){
+		buildFailed = true
+		failMessage +=  ("\nWFR build failed: " + e.getMessage())
+		echo("WFR build failed: " + e.getMessage())
+		e.printStackTrace()
+	}
+	
+	if(buildFailed){		
+		currentBuild.result = "FAILED"
+		
+		echo "Build Failed"
+		echo "Failure log"
+		
+		echo failMessage
+	}		
+}

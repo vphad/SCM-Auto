@@ -1,0 +1,7 @@
+def jen = Jenkins.instance
+
+src = jen.getItemByFullName('vphad_test/RepsAndWarranties_upgradeTest')
+
+newCopy = jen.copy(src, 'RepsAndWarranties_upgradeTest_copy')
+
+println newCopy.getFullName()

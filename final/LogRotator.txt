@@ -1,0 +1,45 @@
+/*
+	Script gets list of jobs from Jenkins instance with Log Rotator details
+*/
+
+def jobs = Jenkins.instance.getAllItems()
+
+println "JobName,Url,Days To Keep,Retain No of Builds,Artifact Days To Keep,Artifact of Builds "
+
+jobs.findAll{(it instanceof Job) && it.logRotator && !it.disabled }.each {
+   
+  def daysToKeep = 0
+   if (it.logRotator.daysToKeep >= 0){
+      daysToKeep = it.logRotator.daysToKeep
+      }
+  
+  	def numToKeep = 0
+   if (it.logRotator.numToKeep >= 0){
+      numToKeep = it.logRotator.numToKeep
+      }
+  
+  def artifactDaysToKeep = 0
+   if (it.logRotator.artifactDaysToKeep >= 0){
+      artifactDaysToKeep = it.logRotator.artifactDaysToKeep
+      }
+  def artifactNumToKeep =0 
+   if (it.logRotator.artifactNumToKeep >= 0){
+      artifactNumToKeep = it.logRotator.artifactNumToKeep
+      }
+  
+  
+  println it.getFullDisplayName() + "," + it.url + "," + daysToKeep  + "," + numToKeep  + "," + artifactDaysToKeep  + "," + artifactNumToKeep
+  
+}
+
+println "End"
+
+// Code to update LogRotator for Jobs
+// import hudson.model.*
+// def jobs = Hudson.instance.items
+ 
+// jobs.findAll{ !it.logRotator && !it.disabled }.each { job ->
+// job.logRotator = new hudson.tasks.LogRotator ( 30, 40, 30, 10) // days to keep, num to keep, artifact days to keep, num to keep
+   // println "$it.name" edited and changed to statement below
+   // println "$job.name"
+// }

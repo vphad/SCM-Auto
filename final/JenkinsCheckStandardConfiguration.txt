@@ -1,0 +1,125 @@
+import jenkins.*
+import jenkins.model.*
+import hudson.*
+import hudson.model.*
+
+import hudson.scm.*
+import hudson.tasks.*
+import com.cloudbees.hudson.plugins.folder.*
+
+jen = Jenkins.instance
+
+
+
+def resolver = build.buildVariableResolver
+
+output = ""
+
+// ignoredFolderList=['AHS_IPOC', 'AHS_MDP']
+
+// ignoredJobList=[]
+
+def ignoredFoldersStr = resolver.resolve('IgnoredFolders')
+def ignoredJobsStr = resolver.resolve('IgnoredJobs')
+
+println ignoredFoldersStr
+println ignoredJobsStr
+
+if(null==ignoredFoldersStr || ""==ignoredFoldersStr){
+  ignoredFolderList = []
+}else{
+  ignoredFolderList = Arrays.asList(ignoredFoldersStr.split(','))
+}
+
+println "Ignored Folders: ${ignoredFolderList}"
+
+if(null== ignoredJobsStr || "" == ignoredJobsStr){
+  ignoredJobList = []
+}else{
+  ignoredJobList = Arrays.asList(ignoredJobsStr.split(','))
+}
+
+
+println "Ignored Jobs List: ${ignoredJobList}"
+
+
+
+failed = false
+
+logs=""
+
+println "\n\n\n"
+println "Url,Name,Disabled,Issue,Value for the field"
+
+jen.getItems().each{
+	if(it instanceof Folder){
+		processFolder(it)
+	}else{
+		processJob(it)
+	}
+}
+
+void processJob(Item job){
+	
+	if(ignoredJobList.contains(job.getFullName())){
+		logs += ("Ignored job ${job.getFullName()}\n")
+      	return
+	}
+	
+	scm = job.getScm()
+	
+  	if(null!=scm && (scm instanceof hudson.scm.IntegritySCM) && !scm.cleanCopy){
+		println "${job.getAbsoluteUrl()},${job.getFullName()},${job.isDisabled()},SCM Clean Copy,${scm.cleanCopy}"
+		failed = true
+	}
+	
+	 if(job.hasProperty('assignedLabel')){        
+		labelExpression = job.getAssignedLabel()
+		
+		if(labelExpression != null && !labelExpression.getExpression().contains('linux') && !labelExpression.getExpression().contains('windows') && !labelExpression.getExpression().contains('aix')){
+			println "${job.getAbsoluteUrl()},${job.getFullName()},${job.isDisabled()},Label Expression,${labelExpression}"
+			failed = true
+		}
+	 }
+  
+  	 // verify concurrent build
+  	if(job.hasProperty('concurrentBuild')){		 
+		 if(job.isConcurrentBuild()){
+			 println "${job.getAbsoluteUrl()},${job.getFullName()},${job.isDisabled()},Concurrent Build,${job.isConcurrentBuild()}"
+			 failed = true
+		 }
+	 }
+	
+}
+
+void processFolder(Item folder){
+	// println folder.getFullName()
+	
+	if(ignoredFolderList.contains(folder.getFullName())){
+		logs += ("Ignored Folder ${folder.getFullName()}\n")
+      	return
+	}
+	
+	folder.getItems().each{
+		if(it instanceof Folder){
+			processFolder(it)
+		}else{
+			processJob(it)
+			// println "${it.getFullName()}"
+		}
+	}
+}
+
+
+
+
+
+println "\n\nLog Summary: "
+println "-------------------"
+println logs
+
+println "\nDone"
+
+println "\nFailed: ${failed}"
+
+return (!failed)

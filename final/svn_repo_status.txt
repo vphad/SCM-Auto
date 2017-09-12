@@ -1,0 +1,135 @@
+/* 
+	This script calls the rest apis to get the status of below tools 
+	
+	Tools supported: 
+	1. SVN
+		Fetches status for all the repositories
+		
+		Required details:
+			SVN Url
+			SVN Username - with access to the repositories
+			SVN Password - for above user
+	2. SonarQube Server
+		Fetches status of the SonarQube server
+		
+		Required details
+			SonarQube Server Url
+	
+*/
+
+
+import groovy.json.JsonSlurper
+import jenkins.*
+import jenkins.model.* 
+import hudson.* 
+import hudson.model.*
+
+
+println "-"*80
+println "Start - Verify connection with SVN repositories"
+
+def parseJSON(text)
+{
+    def slurper = new JsonSlurper()
+    def result = slurper.parseText(text)
+    
+    return result
+}
+
+// def svnUrl = "http://ptc-lgmdpapp106.ad.moodys.net:3343/csvn/api/1/repository?format=json"
+// def svnUserName = "sys_ops_scm"
+// def svnPassword = "XXXX"
+
+
+def resolver = build.buildVariableResolver
+
+def sonarUrl =  (resolver.resolve('sonarUrl'))
+
+def svnUrl =  (resolver.resolve('svnUrl'))
+def svnUserName =  (resolver.resolve('svnUserName'))
+def svnPassword =  (resolver.resolve('svnPassword'))
+
+
+def failLog = ""
+
+success=true
+
+def authString = "${svnUserName}:${svnPassword}".getBytes().encodeBase64().toString()
+
+svnUrl+="/csvn/api/1/repository?format=json"
+
+try
+{
+  	def conn = svnUrl.toURL().openConnection()
+	conn.setRequestProperty( "Authorization", "Basic ${authString}" )
+  
+	def result = parseJSON(conn.content.text)
+	
+	for(def reps: result.repositories){
+		
+		if (reps.status != "OK")
+		{
+			failLog+="Respository ${reps.name} Status: ${reps.status}\n"
+			success = false
+		}
+		else
+		{
+			println "Repository - ${reps.name} Status: ${reps.status}"		
+		}
+	}
+}
+catch (e)
+{
+	println "Exception thrown while getting status of SVN repository  $svnUrl : $e"
+  	success = false
+}
+
+
+println "End - Verify connection with SVN repositories"
+
+println "-"*80
+println "Start - Verify connection with SonarQube server"
+
+sonarRestUrl=sonarUrl + "/api/server?format=json"
+
+conn=null
+
+try
+{
+  	conn = sonarRestUrl.toURL().openConnection()
+	conn.setRequestProperty( "Authorization", "Basic ${authString}" )
+  
+	def result = parseJSON(conn.content.text)
+	
+	if (result.status != "UP")
+	{
+		failLog+="SonarQube Server ${sonarUrl} Status: ${result.status}\n"
+		success = false
+	}
+	else
+	{
+		println "SonarQube Server - ${sonarUrl} Status: ${result.status}"		
+	}
+}
+catch (e)
+{
+	println "Exception thrown while getting status of SonarQube serveR -  $sonarRestUrl : $e"
+  	success = false
+}
+
+println "End - Verify connection with SonarQube Server"
+println "-"*80
+
+println "\n\n"
+if(!success && failLog.size() > 0){
+	println "Failed status Log --------"
+	println failLog
+  
+  	println "Failed status Log --------"
+}
+
+
+
+println "\n\n"
+
+return success

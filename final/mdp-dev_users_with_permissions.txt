@@ -1,0 +1,82 @@
+import jenkins.*
+import jenkins.model.*
+import hudson.*
+import hudson.model.*
+
+import hudson.scm.*
+import hudson.tasks.*
+import com.cloudbees.hudson.plugins.folder.*
+import com.cloudbees.hudson.plugins.folder.properties.*
+
+jen = Jenkins.instance
+
+println "Job Url,Job Name,Folder/Job,SIDs,Permissions"
+
+jen.getItems().each{
+	if(it instanceof Folder){
+		processFolder(it)
+	}else{
+		processJob(it)
+	}
+}
+
+void processJob(Item job){
+	def matrix = null
+
+	if(job instanceof com.cloudbees.hudson.plugins.modeling.impl.folder.FolderTemplate){
+		matrix = job.getProperties().get(AuthorizationMatrixProperty.class)
+	}else{
+		matrix = job.getProperty(hudson.security.AuthorizationMatrixProperty.class)
+	}		
+	
+	if(null!=matrix && null!=matrix.getAllSIDs() && matrix.getAllSIDs().size() > 0)
+		{
+			def sids = matrix.getAllSIDs().join(' ')
+			def gperm = ""
+            matrix.getGrantedPermissions().each{
+              gperm += "|${it.key.getId()}:${it.value.join(' ')}"
+          }
+          
+			gperm = gperm.substring(1)
+		  
+			println "${job.getAbsoluteUrl()},${job.getFullName()},${job.getClass().getSimpleName()},${sids},${gperm}"
+		}else{
+			//println "${job.getAbsoluteUrl()},,${job.getFullName()}"
+		}
+}
+
+void processFolder(Item folder){
+
+		def matrix = folder.getProperties().get(AuthorizationMatrixProperty.class)
+		
+		if(null!=matrix && null!=matrix.getAllSIDs() && matrix.getAllSIDs().size() > 0)
+		{
+			def sids = matrix.getAllSIDs().join(' ')
+			
+			
+			def gperm = ""
+            matrix.getGrantedPermissions().each{
+              gperm += "|${it.key.getId()}:${it.value.join(' ')}"
+          }
+          
+			gperm = gperm.substring(1)
+			
+			
+			println "${folder.getAbsoluteUrl()},${folder.getFullName()},${folder.getClass().getSimpleName()},${sids},${gperm}"
+		}else{
+			//println "${folder.getAbsoluteUrl()},${folder.getFullName()}"
+		}
+	
+	
+	folder.getItems().each{
+		if(it instanceof Folder){
+			processFolder(it)
+		}else{
+			processJob(it)
+			// println "${it.getFullName()}"
+		}
+	}
+}
+
+
+println ""

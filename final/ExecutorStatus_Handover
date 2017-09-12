@@ -1,0 +1,146 @@
+def job = Jenkins.instance.getItemByFullName('/MDP/Monitor/ExecutorsStatus')
+
+
+def today = new Date()
+
+def yestarday = today -1 
+
+println "${today}, ${yestarday}"
+
+def exList = []
+
+Set<String> labels = []
+
+for(def label : Jenkins.instance.getLabels()){
+  
+  //println label.getName()
+  
+  if(!label.getName().toLowerCase().contains("linux") && !label.getName().toLowerCase().contains("windows") && !label.getName().toLowerCase().contains("aix")){
+    labels.add(label.getName())
+  }
+}
+
+Set<String> buildOfflineMessage = []
+
+job.getBuilds().byTimestamp(yestarday.getTime(), today.getTime()).each{
+ build ->
+
+	def log = build.logFile.text
+	
+	def offline = log =~ /.*\s+is offline/
+	
+	if(offline.getCount() > 0){
+		// buildOfflineMessage += "\nSlaves offline - ${build.getTime().format("yyyy-MM-dd HH:mm:ss")}"
+		
+		offline.each{
+			buildOfflineMessage << "${it}"
+		}
+	}
+	
+	labels.each{
+		//def label = 'd-pwin103'
+		label -> 
+		
+		def regex = log =~ /$label,\d+,\d+,\d+,\d+.*/
+		
+		// println regex.getAt(0)
+			if(regex.getCount() > 0){	
+				name = regex.getAt(0).split(',').getAt(0)
+				total=regex.getAt(0).split(',').getAt(1)
+				active=regex.getAt(0).split(',').getAt(2)
+				busy=regex.getAt(0).split(',').getAt(3)
+				idle=regex.getAt(0).split(',').getAt(4)
+				
+			if(name.contains("nix")){
+				slaveType = "Linux"
+			} else if(name.contains("win")){
+				slaveType = "Windows"
+			} else if(name.contains("aix")){
+				slaveType = "Aix"
+			} else{
+				slaveType = "Other"
+			}
+			
+			def ld = new LabelData(name, total, active, busy,idle, build.getTime().format("yyyy-MM-dd HH:mm:ss"), slaveType)
+			
+			exList << ld
+		}
+	}
+  
+}
+
+header = ""
+// exList.each{
+	// header += ",${it.time}"
+// }
+
+// println "Server,Type${header}"
+
+data = ""
+
+def headerRow = true
+
+labels.each{
+	label -> 
+
+	if(headerRow){
+		data += "Server,Type,Total"
+		for(def exData : exList){
+			if(exData.name=="${label}"){				
+					data+= ",${exData.time}"			
+			}
+		}
+		
+		data+="\n"
+		headerRow = false
+	}
+	
+	first = true
+	
+	exList.each{
+		if(it.name=="${label}"){
+			if(first){
+				data+= "${label},${it.slaveType},${it.total},${it.idle}"
+				first = false
+			}else{
+				data += ",${it.idle}"
+			}
+		}
+	}
+	
+	data+="\n"
+}
+
+println data
+
+
+buildOfflineMessage.each{
+	println it
+}
+
+println "Done"
+
+class LabelData{
+  def name
+  def time
+  def total
+  def active
+  def busy
+  def idle
+  def slaveType
+  
+  LabelData(name, total, active, busy, idle, time, slaveType){    
+    this.name = name
+    this.total = total
+    this.active = active
+    this.busy = busy
+    this.idle = idle
+    this.time = time
+    this.slaveType = slaveType
+  }
+  
+  String toString(){
+    return "${name},${total},${active},${busy},${idle},${time},${slaveType}"
+  }
+  
+}

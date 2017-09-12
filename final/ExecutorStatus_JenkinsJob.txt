@@ -1,0 +1,99 @@
+/*
+*	This script lists all the executors available on the Jenkins Instance
+*	
+*	Result is provided in comma separated list, use excel to store the data & read
+*/
+
+import jenkins.*
+import jenkins.model.* 
+import hudson.* 
+import hudson.model.*
+
+def inst = Jenkins.instance;
+
+def output =""
+
+def resolver = build.buildVariableResolver
+def threshold =  Long.parseLong(resolver.resolve('MinExecutorThreshold'))
+//def threshold = 2
+
+def winTotal = 0
+def winUsed = 0
+def winIdle =0
+
+def linTotal = 0
+def linUsed = 0
+def linIdle =0
+
+for(Computer c : inst.getComputers()){
+	
+  def name = c.getDisplayName()
+  def execList = c.getExecutors();
+  def totalExecutors = execList.size()
+  def cntactive =0, cntbusy=0, cntidle=0;
+  
+  for( int i=0; i< totalExecutors; i++ ) 
+  {    
+    def exec = execList.get(i);
+    if(exec.isActive())
+    {
+      cntactive++;
+    }
+    if(exec.isBusy())
+    {
+      cntbusy++;
+    }
+    if(exec.isIdle())
+    {
+      cntidle++;
+    }
+        
+  }
+  
+  
+  if(name.contains('win')){	
+	winTotal+= totalExecutors
+	winUsed+= cntbusy
+	winIdle+= cntidle
+  }
+  if(name.contains('nix')){	
+	linTotal+= totalExecutors
+	linUsed+= cntbusy
+	linIdle+= cntidle
+  }
+    
+  output += name + "," + totalExecutors + "," + cntactive + "," + cntbusy + "," + cntidle + "\n"
+}
+
+
+if(linIdle <= threshold){
+  println "-----------------------------------------------"
+  println "Linux slaves: Available executors met threshold value of ${threshold} "
+  println "-----------------------------------------------"
+}
+
+if(winIdle <= threshold){
+  println "-----------------------------------------------"
+  println "Windows slaves: Available executors met threshold value of ${threshold}"
+  println "-----------------------------------------------"
+}
+
+println "Windows executors status" 
+println "------------------------" 
+println "Total : " + winTotal
+println "Used  : " + winUsed
+println "Idle  : " + winIdle
+println ""
+println "Linux executors status"
+println "----------------------" 
+println "Total : " + linTotal
+println "Used  : " + linUsed
+println "Idle  : " + linIdle
+println ""
+println "------------------------" 
+println "Server,Total,Active,Busy,Idle"
+println output
+ 
+if(linIdle <= threshold || winIdle <= threshold){  
+  return 1
+}

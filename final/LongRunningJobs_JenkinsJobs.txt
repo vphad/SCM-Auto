@@ -1,0 +1,71 @@
+/*
+
+	JenkinsJob: Lists jobs running for more than threshold values
+*/
+
+
+import jenkins.*
+import jenkins.model.* 
+import hudson.* 
+import hudson.model.*
+import java.util.concurrent.*
+  
+def jen = Jenkins.instance
+
+allJobs = jen.getAllItems().findAll{ job ->
+	(job instanceof Job) && !job.isDisabled()
+}
+
+// in minutes
+def resolver = build.buildVariableResolver
+def threshold =  Long.parseLong(resolver.resolve('Threshold'))
+//def threshold = 60
+
+
+def flag = 0
+
+println "-----------------------------------"
+println "Job,Url,Last Build Time,Q Time (Min),Running For Hrs."
+
+
+// duration in minutes
+def duration = 1000 * 60 
+
+lastBuilds = allJobs.each{ job ->
+	lastBuild = job.getLastBuild()
+ 
+  	// TODO: Add code to get executor wait time, and then compare the time difference
+  
+  
+	if(lastBuild!=null && lastBuild.isInProgress() && (null!=lastBuild.getExecutor())){
+      def buildTime = lastBuild.getTime()
+      now = new Date()
+      def difference = now.time - buildTime.time
+	  
+	  def action = lastBuild.getAction(jenkins.metrics.impl.TimeInQueueAction.class)
+	  def totalQDuration = ""
+	  if(action!=null)
+	  {          
+		  totalQDuration = String.format( "%02.02f", (action.getQueuingDurationMillis() / duration))
+	  }
+
+		      
+      if (difference > TimeUnit.MINUTES.toMillis(threshold)) { 
+		flag = 1
+		// println "------------"
+    	// println "Job: ${job.getFullName()}" 
+        // println "Url: ${lastBuild.getAbsoluteUrl()}"
+		// println "Build Time: ${lastBuild.getTime().format('MM-dd-yyyy HH:mm:ss')}"
+        // println "Running for " + String.format( "%02.02f", (difference/(1000*60*60))) + " Hrs."
+        println "${job.getFullName()},${lastBuild.getAbsoluteUrl()},${lastBuild.getTime().format('MM-dd-yyyy HH:mm:ss')},${totalQDuration},${String.format( "%02.02f", (difference/(1000*60*60)))}"
+		
+	   }
+      
+	}
+}
+
+
+
+println "\n\n-----------------------------------"
+println "End"
+return flag

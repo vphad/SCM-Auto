@@ -1,0 +1,29 @@
+Jenkins.instance.getAllItems().each{
+  item ->
+  
+  if(!item.getFullName().toLowerCase().contains("ahs") && !item.getFullName().toLowerCase().contains("mdp") && !(item instanceof com.cloudbees.hudson.plugins.folder.Folder)){
+      
+	prop = item.getProperty(ParametersDefinitionProperty.class)
+
+    if(prop != null) {
+      for(param in prop.getParameterDefinitions()) {
+        if(param instanceof hudson.scm.listtagsparameter.ListSubversionTagsParameterDefinition && null!=param.getDefaultValue()  && ""!=param.getDefaultValue().trim() && !item.getFullName().toLowerCase().contains(param.getDefaultValue().toLowerCase()) && "trunk"!= param.getDefaultValue().toLowerCase()){
+          try {        
+            println(item.getFullName() + "," + item.getAbsoluteUrl()  + "," + param.getName() + "," + param.getDefaultValue())
+            //println item.getFullName().toLowerCase()
+           // println param.getDefaultValue().toLowerCase()
+           // println !item.getFullName().toLowerCase().contains(param.getDefaultValue().toLowerCase())
+            
+          }
+          catch(Exception e) {
+        println "Error - " + e.getMessage()
+          }  
+        }
+    
+            }    
+        }
+      
+  }
+}
+
+println ''

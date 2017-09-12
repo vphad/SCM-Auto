@@ -1,0 +1,75 @@
+/*
+	Author - Vijayanand Vitthal Phad
+
+	This script creates csv with Jenkins jobs & their last build time to identify jobs not running for long time.
+*/
+
+import jenkins.*
+import jenkins.model.*
+import hudson.*
+import hudson.model.*
+
+
+def jen = Jenkins.instance
+
+allJobs = jen.getAllItems().findAll{
+	job ->
+	(job instanceof Job) && (job.hasProperty("disabled") && !job.isDisabled()) && (!job.getFullName().toLowerCase().contains('ahs')) && (job.hasProperty('scm') && job.getScm() instanceof hudson.scm.SubversionSCM)
+}
+
+output = "LoB,Application,Branch,Full Name,Url,Disabled,Build Result,Last Build Time"
+
+for(Job job : allJobs) {
+	
+	lastBuild = job.getLastBuild()
+
+	displayName = job.getFullName()
+	folders = displayName.split('/') as List
+	
+	lob = folders?.getAt(0)
+	app = folders?.getAt(1)
+	branch = folders?.getAt(2)
+	
+	jobUrl = job.getAbsoluteUrl()
+	isDisabled = job.disabled
+
+	lastBuildTime = ""
+	lastBuildResult = ""
+	
+	if(null != lastBuild){
+		lastBuildTime = (lastBuild.getTime() !=null ? lastBuild.getTime().format("MM-dd-yyyy HH:mm:ss") : "")
+		lastBuildResult = lastBuild.result
+	}
+	
+	output+= ("\n${lob},${app},${branch}," + displayName + "," + job.getAbsoluteUrl() + ",${isDisabled}," + lastBuildResult + "," + lastBuildTime)
+}
+
+println "-"*80
+println output
+println "-"*80
+
+
+
+
+def parentPath = build.workspace.toString()
+
+def outputFile = parentPath + "/Jenkins-LastBuildTimes.csv"
+
+
+
+if(build.workspace.isRemote())
+{
+    channel = build.workspace.channel;
+    fp = new FilePath(channel, outputFile)
+} else {
+    fp = new FilePath(new File(outputFile))
+}
+
+if(fp != null)
+{
+  	println "\n\n\n---------\nOutputFile - " + outputFile
+    fp.write(output, null); //writing to file
+} else{
+  println "Error - Failed to update file data"
+  return 1
+}

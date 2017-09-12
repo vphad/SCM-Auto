@@ -1,0 +1,18 @@
+Jenkins.instance.getAllItems(AbstractProject.class).each{
+  job ->
+  // println job.class
+  
+  if(job.hasProperty('builders')){
+  
+  job.getBuildersList().each{
+    b -> 
+    
+    if(b instanceof hudson.tasks.Shell && b.getCommand().contains('mvn')){
+      println job.getAbsoluteUrl() + "configure" + "," + b.getCommand().replaceAll("\n", " ").replaceAll(",", " ")
+    }
+
+  }
+  }
+}
+
+println ''

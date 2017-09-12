@@ -1,0 +1,16 @@
+logFile = Jenkins.instance.getItemByFullName('/DMTS/SRDS/DMTS-2017-MNE-ORP-Fig-Ins(180)/srds/').getBuildByNumber(5).getLogFile()
+
+logFile.withReader { reader ->
+
+					while ((logText = reader.readLine()) !=null ) {
+                      regex= logText =~ /Uploading:(.*mit-releases.*.war)/
+                      
+                      if(regex.getCount() > 0){
+                        regex.each{
+                          println it[1]
+                        }
+                      }
+                    }
+}
+
+println ''

@@ -1,0 +1,101 @@
+import hudson.scm.IntegritySCM
+
+def jen = Jenkins.instance
+
+scmJobs = jen.getAllItems().findAll{
+  (it.hasProperty('scm') && null!=it.getScm()) && (it.getScm() instanceof hudson.scm.IntegritySCM) 
+}
+
+scmJobs.each{
+  configPath = it.getScm().getConfigPath()
+
+	if(configPath.contains("d=")){
+		di = configPath.indexOf("d=")
+		inHash = configPath.indexOf('#', di)
+		
+		inHash = (-1 == inHash ) ? configPath.size(): inHash
+		
+		variant = configPath.substring( di + 2 ,  inHash)
+
+		newPath = configPath.replace(variant, "\${env['Variant']}")
+      
+      if(it.getName()=="JNDI_BundleX"){
+        println "="*80
+        println "updating job"
+        
+        scm = it.getScm()
+                
+		println ("CI Server URL: " + scm.ciServerURL);
+		println ("URL: " + scm.integrityURL);
+		println ("Server Configuration: " + scm.serverConfig);
+		println ("Project User: " + scm.userName);
+		println ("Project User Password: " + scm.password);
+		println ("Configuration Name: " + scm.configurationName);
+		println ("Configuration Path: " + scm.configPath);
+		println ("Include Filter: " + scm.includeList);
+		println ("Exclude Filter: " + scm.excludeList);
+		println ("Line Terminator: " + scm.lineTerminator);
+		println ("Restore Timestamp: " + scm.restoreTimestamp);
+		println ("Clean: " + scm.cleanCopy);
+		println ("Skip Author Info: " + scm.skipAuthorInfo);
+		println ("Checkpoint Before Build: " + scm.checkpointBeforeBuild);
+		println ("Tag Name: " + scm.checkpointLabel);
+		println ("Alternate Workspace Directory: " + scm.alternateWorkspace);
+		println ("Fetch Changed Workspace Files: " + scm.fetchChangedWorkspaceFiles);
+		println ("Delete Non Members: " + scm.deleteNonMembers);
+		println ("Checkout Thread Pool Size: " + scm.checkoutThreadPoolSize);
+        
+        nscm = new IntegritySCM(scm.getServerConfig(), newPath, scm.getConfigurationName())
+        
+        //nscm.setIntegrityURL(scm.integrityURL);
+		nscm.setServerConfig(scm.serverConfig);
+		// nscm.setUserName(scm.userName);
+		// nscm.setPassword(scm.password);
+		nscm.setConfigurationName(scm.configurationName);
+		// nscm.setConfigPath(scm.configPath);
+		nscm.setIncludeList(scm.includeList);
+		nscm.setExcludeList(scm.excludeList);
+		nscm.setLineTerminator(scm.lineTerminator);
+		nscm.setRestoreTimestamp(scm.restoreTimestamp);
+		nscm.setCleanCopy(scm.cleanCopy);
+		nscm.setSkipAuthorInfo(scm.skipAuthorInfo);
+		nscm.setCheckpointBeforeBuild(scm.checkpointBeforeBuild);
+		nscm.setCheckpointLabel(scm.checkpointLabel);
+		nscm.setAlternateWorkspace(scm.alternateWorkspace);
+		nscm.setFetchChangedWorkspaceFiles(scm.fetchChangedWorkspaceFiles);
+		nscm.setDeleteNonMembers(scm.deleteNonMembers);
+		nscm.setCheckoutThreadPoolSize(scm.checkoutThreadPoolSize);
+             
+        println "-"*80
+        
+		println ("CI Server URL: " + nscm.ciServerURL);
+		println ("URL: " + nscm.integrityURL);
+		println ("Server Configuration: " + nscm.serverConfig);
+		println ("Project User: " + nscm.userName);
+		println ("Project User Password: " + nscm.password);
+		println ("Configuration Name: " + nscm.configurationName);
+		println ("Configuration Path: " + nscm.configPath);
+		println ("Include Filter: " + nscm.includeList);
+		println ("Exclude Filter: " + nscm.excludeList);
+		println ("Line Terminator: " + nscm.lineTerminator);
+		println ("Restore Timestamp: " + nscm.restoreTimestamp);
+		println ("Clean: " + nscm.cleanCopy);
+		println ("Skip Author Info: " + nscm.skipAuthorInfo);
+		println ("Checkpoint Before Build: " + nscm.checkpointBeforeBuild);
+		println ("Tag Name: " + nscm.checkpointLabel);
+		println ("Alternate Workspace Directory: " + nscm.alternateWorkspace);
+		println ("Fetch Changed Workspace Files: " + nscm.fetchChangedWorkspaceFiles);
+		println ("Delete Non Members: " + nscm.deleteNonMembers);
+		println ("Checkout Thread Pool Size: " + nscm.checkoutThreadPoolSize);
+        
+			 
+        it.setScm(nscm)
+                
+        println "="*80
+      }
+		
+		println "${it.getFullName()},${it.isDisabled()},${configPath},${variant},${newPath}"
+	}	
+}
+
+println ""

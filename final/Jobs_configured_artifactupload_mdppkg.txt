@@ -1,0 +1,77 @@
+// Get mdppkg deploy content
+import hudson.scm.*
+import hudson.tasks.*
+import com.cloudbees.hudson.plugins.folder.*
+
+def jen = Jenkins.instance
+
+allJobsJenkins = jen.getAllItems()
+
+println "All jobs on Jenkins instance - Size: ${allJobsJenkins.size()}"
+
+allJobs = allJobsJenkins.findAll{
+	job -> (job instanceof Job)
+}
+
+
+println "Build jobs size: ${allJobs.size()}"
+
+def output="Url,Name,Disabled,artifact upload,mdppkg deploy\n"
+
+result = true
+
+for(Item job: allJobs)
+{
+	config= job.configFile.asString()
+	
+	def jobName = job.getFullName()
+	def disabled = job.isDisabled()	
+	def url = "${job.getAbsoluteUrl()}configure"
+	
+	def artifactUpload = false
+	def artifactUploadStr = ""
+	
+	def mdppkg = false
+	def mdppkgStr = ""
+	
+	if(config =~ /\/opt\/mdp\/app\/bin\/artifact-uploader/){
+		artifactUpload = true		
+	}
+  
+  if(config =~ /mdppkg\s+deploy\s+/){
+    mdppkg = true
+  }
+  
+  if(!artifactUpload || !mdppkg){
+	  result = false
+  }
+     
+     output += "${url},${jobName},${disabled},${artifactUpload},${mdppkg}\n"
+}
+
+println output
+
+
+try{
+def f = new File('artifact-uploader-report.csv')
+
+if(!f.exists() && !f.isDirectory()){
+  f.createNewFile()
+}
+
+today = new Date()
+datetime = today.format("MM-dd-yyyy_HH_mm_ss")
+backupFile = "artifact-uploader-report_" + datetime + ".csv"
+
+new File(backupFile) << new File("artifact-uploader-report.csv").bytes
+
+
+println "Backup file: ${backupFile}"  
+
+}catch(Exception e){
+	println "Error storing output to csv" + e.getMessage()
+	e.printStackTrace()
+}
+
+
+return result

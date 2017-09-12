@@ -1,0 +1,47 @@
+import jenkins.*
+import jenkins.model.*
+import hudson.*
+import hudson.model.*
+
+import hudson.scm.*
+import hudson.tasks.*
+import com.cloudbees.hudson.plugins.folder.*
+
+jen = Jenkins.instance
+
+def item = jen.getItemByFullName('/MDP/SVN/SVN-Access-Management')
+
+processJob(item)
+
+void processJob(Item job){
+  // def output = job.getFullName() + ","
+
+  
+  job.getBuilds().each{
+	def parameters = it.actions.find{ it instanceof ParametersAction }?.parameters
+  
+    
+    // println("--- Parameters for " + item.name + " ---")    
+    parameters?.each{
+		param ->
+      try {
+		  if(param.name=="Operation" && "Revoke-Access" == param.value){
+			  println it.getAbsoluteUrl()
+				println param.name  + "," + param.value
+            
+             parameters?.each{
+				data ->
+               	println data.name + "," + data.value
+             }
+            
+		  }
+      }
+      catch(Exception e) {
+      }
+  }
+}
+  
+ 
+}
+
+println ""

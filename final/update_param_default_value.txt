@@ -1,0 +1,31 @@
+def folder = Jenkins.instance.getItemByFullName('Ratings/SRDS/1253065')
+
+folder.getItems().each{
+  job ->
+ 
+  
+   prop = job.getProperty(ParametersDefinitionProperty.class)
+  if(prop != null) {
+        
+	for(param in prop.getParameterDefinitions()) {
+      try {
+		  if("Variant"==param.name){    
+            println "Updated for : ${job.getName()}"
+		  param.defaultValue="1253065"
+		 
+            job.save()
+		  // item.setProperty(ParametersDefinitionProperty.class,props)
+        }
+      }
+      catch(Exception e) {
+        println(param.name)
+      }
+    }
+    println()
+  }
+  
+  
+}
+
+
+println ""

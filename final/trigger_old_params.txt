@@ -1,0 +1,6 @@
+
+def job = Jenkins.instance.getItemByFullName('Sonar Upgrade/BFM/BFM/BFM-2017-MNE-MC2(291)/FMBanking')
+def build  = job.getLastBuild()
+def params  = build.getAction(hudson.model.ParametersAction.class)
+
+Jenkins.instance.queue.schedule(job, 0, params) 

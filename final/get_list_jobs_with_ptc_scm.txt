@@ -1,0 +1,11 @@
+def jen = Jenkins.instance
+
+scmJobs = jen.getAllItems().findAll{
+  (it.hasProperty('scm') && null!=it.getScm()) && (it.getScm() instanceof hudson.scm.IntegritySCM) 
+}
+
+scmJobs.each{
+  println "${it.getFullName()},${it.isDisabled()},${it.getScm().getConfigPath()}"
+}
+
+println "Done"

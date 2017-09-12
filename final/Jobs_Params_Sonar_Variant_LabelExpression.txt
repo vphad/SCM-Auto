@@ -1,0 +1,72 @@
+/*
+
+The script lists all the jobs with Parameters and integrity label expression 
+
+*/
+
+
+def jen = Jenkins.instance
+
+def allJobs = jen.getAllItems().findAll{
+  item -> (item instanceof Job) 
+}
+
+
+println "Job Path,Disabled,Url,Label,Expression,sonar.branch=\$Variant,Parameters"
+
+for(Job item : allJobs){
+  
+	//  def job = jen.getItemByFullName('/BFM_1168386/JNDI_Bundle')
+	// def item = jen.getItemByFullName('/BFM_1193695/BRM3-MSP-Services/');
+
+  def paramList = []
+  prop = item.getProperty(ParametersDefinitionProperty.class)
+  if(prop != null) {
+    
+    
+    // def defs =  prop.getParameterDefinition('variant')
+    // println defs.name + ", " + defs.defaultValue
+    
+    // println("--- Parameters for " + item.name + " ---")    
+    for(param in prop.getParameterDefinitions()) {
+      try {
+         paramList.push(param.name)  // + "," + param.defaultValue)
+      }
+      catch(Exception e) {
+        // println(param.name)
+      }
+    }
+    
+   paramList = paramList.sort()
+  }
+
+  def s = item.getConfigFile().asString()
+  // def matcher = s =~  /(?ms)<configPath>.*<\/configPath>/
+
+	def matcher = s =~ /(?s)<configPath>(.*?)<\/configPath>/
+
+   def configPath = "";
+    matcher.each { configPath = it[1] }
+
+	def paramStr = "";
+	for(def paramName :paramList)
+	{
+        // println paramName
+      	if((paramName.trim().equalsIgnoreCase("Variant") || paramName.trim().equalsIgnoreCase("label")))
+      	{
+        	paramStr+= paramName + " "
+      	}
+	}
+  
+   def sonarVariant = s.contains("sonar.branch=\$Variant");
+
+	println item.getFullDisplayName() + "," + item.isDisabled() + "," + item.getAbsoluteUrl() + "configure" +"," + configPath + "," + sonarVariant + "," + paramStr
+
+	
+     // def configPath = matcher.size() > 0 ? matcher[0] : "NOTHING"
+     // println configPath
+  
+  
+//  break
+  
+}
